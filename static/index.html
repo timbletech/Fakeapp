@@ -1,0 +1,2144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vishwas — Device, SIM & Deepfake Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --surface-alt: #f8fafc;
+            --text: #111827;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --primary: #0f766e;
+            --primary-dark: #043f3b;
+            --primary-light: #e6f4f3;
+            --success: #15803d;
+            --success-light: #dcfce7;
+            --warning: #b45309;
+            --warning-light: #fef3c7;
+            --error: #b91c1c;
+            --error-light: #fee2e2;
+            --accent: #4a3f8f;
+            --accent-light: #e8e5ff;
+            --radius: 14px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        .hidden { display: none !important; }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.9375rem;
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+        }
+
+        /* Top bar */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .topbar-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .brand {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .subtitle {
+            font-size: 0.8125rem;
+            color: var(--muted);
+        }
+
+        /* Shell */
+        .shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+        .workspace {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        /* Side nav */
+        .mode-nav {
+            position: sticky;
+            top: 70px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 10px;
+            box-shadow: var(--shadow);
+        }
+        .nav-group + .nav-group {
+            margin-top: 4px;
+            border-top: 1px solid var(--line);
+            padding-top: 4px;
+        }
+        .nav-top-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 700;
+            padding: 9px 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .nav-top-btn:hover { background: var(--surface-alt); }
+        .nav-top-btn.active { color: var(--primary); }
+        .nav-top-btn .chevron {
+            width: 14px;
+            height: 14px;
+            transition: transform 0.2s;
+            color: var(--muted);
+        }
+        .nav-top-btn.open .chevron { transform: rotate(180deg); }
+        .nav-sub {
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            padding: 2px 0 4px 8px;
+        }
+        .nav-sub.open { display: flex; }
+        .mode-btn {
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--muted);
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: left;
+            padding: 7px 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .mode-btn:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+        .mode-btn.active {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        /* Views */
+        .views { min-width: 0; }
+        .view {
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .view.active { display: flex; }
+
+        /* Panel */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .panel.hero {
+            background: linear-gradient(135deg, var(--primary-light) 0%, #fef9f0 100%);
+            border-color: rgba(15,118,110,0.2);
+        }
+        .panel h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .panel h3 {
+            font-size: 0.9375rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+        }
+        .panel > p {
+            font-size: 0.875rem;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        /* Form */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        input[type="text"], input[type="number"] {
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            padding: 9px 12px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            color: var(--text);
+            background: var(--surface-alt);
+            transition: all 0.15s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--surface);
+            box-shadow: 0 0 0 3px rgba(15,118,110,0.12);
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 700;
+            padding: 9px 18px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn:active:not(:disabled) { transform: translateY(1px); }
+        .btn.primary {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(15,118,110,0.3);
+        }
+        .btn.primary:hover:not(:disabled) { background: var(--primary-dark); }
+        .btn.secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--line);
+        }
+        .btn.secondary:hover:not(:disabled) { background: var(--surface-alt); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Status box */
+        .status {
+            margin-top: 16px;
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            background: var(--surface);
+        }
+        .status-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--surface-alt);
+            border-bottom: 1px solid var(--line);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--muted);
+        }
+        .status pre {
+            padding: 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            background: #1e293b;
+            color: #e2e8f0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+        }
+
+        /* Badge */
+        .badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 4px 10px;
+            border-radius: 100px;
+        }
+        .badge-idle { background: var(--surface-alt); color: var(--muted); }
+        .badge-pending { background: var(--warning-light); color: var(--warning); }
+        .badge-success { background: var(--success-light); color: var(--success); }
+        .badge-error { background: var(--error-light); color: var(--error); }
+
+        /* Steps indicator */
+        .steps {
+            display: flex;
+            gap: 1px;
+            background: var(--line);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .step {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--surface-alt);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--muted);
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .step.active { background: var(--warning-light); color: var(--warning); }
+        .step.completed { background: var(--success-light); color: var(--success); }
+
+        /* File drop */
+        .file-drop-area {
+            border: 2px dashed var(--line);
+            border-radius: var(--radius-sm);
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .file-drop-area:hover { border-color: var(--primary); background: var(--primary-light); }
+        .file-drop-area.drag-over { border-color: var(--primary); background: var(--primary-light); }
+        .file-drop-area.has-file { border-style: solid; border-color: var(--success); background: var(--success-light); }
+        .file-drop-area span {
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        .file-drop-area.has-file span { color: var(--success); font-weight: 600; }
+        .file-input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Customer Journey - Chapter cards */
+        .chapters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .chapter-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chapter-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+            border-color: var(--primary);
+        }
+        .chapter-badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            background: var(--accent-light);
+            padding: 4px 10px;
+            border-radius: 100px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .chapter-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .chapter-desc {
+            font-size: 0.85rem;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        .chapter-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .chapter-tag {
+            font-size: 0.68rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: var(--surface-alt);
+            color: var(--muted);
+        }
+
+        /* Story Modal */
+        .story-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .story-overlay.active { display: flex; }
+        .story-modal {
+            background: #f5f0e8;
+            border-radius: var(--radius);
+            max-width: 760px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .story-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+        }
+        .story-close button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: var(--surface-alt);
+            color: var(--muted);
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+        .story-close button:hover { background: var(--line); }
+        .story-header {
+            padding: 32px 24px 20px;
+            text-align: center;
+            border-bottom: 1px dashed var(--line);
+        }
+        .story-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .story-sub {
+            font-size: 0.9rem;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+        .story-steps-container {
+            padding: 24px;
+        }
+        .story-step {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .step-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .step-dot.normal { background: #dce9f5; color: #2c5f8a; }
+        .step-dot.threat { background: #fce4e0; color: #c0392b; }
+        .step-dot.detect { background: #fdf0d5; color: #d4870e; }
+        .step-dot.resolve { background: #d4efe3; color: #2d7a5f; }
+        .step-content { flex: 1; }
+        .step-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+        .step-label.normal { color: #2c5f8a; }
+        .step-label.threat { color: #c0392b; }
+        .step-label.detect { color: #d4870e; }
+        .step-label.resolve { color: #2d7a5f; }
+        .step-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .step-desc {
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+        .step-insight {
+            margin-top: 8px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            background: var(--accent-light);
+            border-left: 3px solid var(--accent);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--accent);
+        }
+        .story-footer {
+            padding: 16px 24px;
+            border-top: 1px dashed var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .story-note {
+            font-size: 0.78rem;
+            color: var(--muted);
+            font-style: italic;
+            flex: 1;
+        }
+        .story-nav { display: flex; gap: 8px; }
+
+        /* Scenario tabs and card */
+        .scenario-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .sc-tab {
+            border: 1px solid var(--line);
+            background: var(--surface);
+            padding: 8px 14px;
+            border-radius: 100px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .sc-tab:hover { border-color: var(--primary); color: var(--primary); }
+        .sc-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .sc-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .sc-icon { font-size: 1.8rem; }
+        .sc-title { font-size: 1.1rem; font-weight: 700; }
+        .sc-mode {
+            margin-left: auto;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+        .sc-mode.device { background: var(--success-light); color: var(--success); }
+        .sc-mode.sim { background: #ede9fe; color: #6d28d9; }
+        .sc-mode.hybrid { background: var(--warning-light); color: var(--warning); }
+        .sc-story {
+            color: var(--muted);
+            font-size: 0.85rem;
+            line-height: 1.55;
+            margin-bottom: 16px;
+        }
+        .sc-flow {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding: 12px;
+            background: var(--surface-alt);
+            border-radius: var(--radius-sm);
+            margin-bottom: 16px;
+        }
+        .sc-step {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: var(--primary);
+            background: var(--primary-light);
+            border-radius: 4px;
+            padding: 4px 8px;
+        }
+        .sc-arrow { color: var(--muted); font-size: 0.85rem; }
+
+        /* Config sliders */
+        .slider-group { display: flex; flex-direction: column; gap: 16px; }
+        .slider-row { display: flex; flex-direction: column; gap: 4px; }
+        .slider-header { display: flex; justify-content: space-between; align-items: center; }
+        .slider-name { font-size: 0.82rem; font-weight: 600; }
+        .slider-val {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .slider-desc { font-size: 0.72rem; color: var(--muted); }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--line);
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+        .slider-allow input::-webkit-slider-thumb { background: var(--success); }
+        .slider-review input::-webkit-slider-thumb { background: var(--warning); }
+        .slider-deny input::-webkit-slider-thumb { background: var(--error); }
+        .val-allow { color: var(--success) !important; }
+        .val-review { color: var(--warning) !important; }
+        .val-deny { color: var(--error) !important; }
+
+        .threshold-bar {
+            display: flex;
+            height: 28px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            margin-top: 8px;
+            border: 1px solid var(--line);
+        }
+        .tbar-deny { background: var(--error-light); color: var(--error); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: center; transition: width 0.3s; }
+        .tbar-review { background: var(--warning-light); color: var(--warning); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: center; transition: width 0.3s; }
+        .tbar-allow { background: var(--success-light); color: var(--success); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; justify-content: center; flex: 1; }
+
+        /* Animated Scene Styles */
+        .scene-container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 0 16px 32px;
+        }
+        .scene-step {
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.7s cubic-bezier(0.16,1,0.3,1);
+        }
+        .scene-step.visible {
+            opacity: 1;
+            transform: none;
+        }
+        .scene-box {
+            background: white;
+            border: 1.5px solid rgba(0,0,0,0.06);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .scene-box svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        .scene-caption {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .scene-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .scene-dot.normal { background: #dce9f5; color: #2c5f8a; }
+        .scene-dot.threat { background: #fce4e0; color: #c0392b; }
+        .scene-dot.detect { background: #fdf0d5; color: #d4870e; }
+        .scene-dot.resolve { background: #d4efe3; color: #2d7a5f; }
+        .scene-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 2px;
+            font-weight: 500;
+        }
+        .scene-label.normal { color: #2c5f8a; }
+        .scene-label.threat { color: #c0392b; }
+        .scene-label.detect { color: #d4870e; }
+        .scene-label.resolve { color: #2d7a5f; }
+        .scene-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+        .scene-insight {
+            margin-top: 8px;
+            margin-left: 44px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            background: rgba(74,63,143,0.05);
+            border-left: 3px solid var(--accent);
+            color: var(--accent);
+        }
+
+        /* SVG Animations */
+        @keyframes slideInLeft{from{transform:translateX(-60px);opacity:0}to{transform:translateX(0);opacity:1}}
+        @keyframes slideInRight{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
+        @keyframes slideInUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+        @keyframes lockSnap{0%{transform:rotate(-15deg) scale(1.3);opacity:0}60%{transform:rotate(3deg) scale(1)}100%{transform:rotate(0) scale(1);opacity:1}}
+        @keyframes shakeX{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+        @keyframes ghostFade{0%{opacity:0.8;transform:translateY(0)}100%{opacity:0;transform:translateY(-20px)}}
+        @keyframes doorSlam{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+        @keyframes bellRing{0%,100%{transform:rotate(0)}10%{transform:rotate(12deg)}20%{transform:rotate(-12deg)}30%{transform:rotate(8deg)}40%{transform:rotate(-8deg)}50%{transform:rotate(0)}}
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .workspace { grid-template-columns: 1fr; }
+            .mode-nav {
+                position: static;
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 8px;
+                gap: 6px;
+            }
+            .nav-group { flex-direction: row; }
+            .nav-group + .nav-group { margin-top: 0; border-top: none; padding-top: 0; border-left: 1px solid var(--line); padding-left: 6px; margin-left: 6px; }
+            .nav-sub { flex-direction: row; padding: 0; }
+            .nav-top-btn { display: none; }
+            .nav-sub.open { display: flex; }
+            .nav-sub { display: flex !important; }
+        }
+        @media (max-width: 640px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .btn-row { flex-direction: column; }
+            .steps { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <h1 class="brand">Vishwas</h1>
+            <p class="subtitle">Device, SIM & Deepfake Detection</p>
+        </div>
+    </header>
+
+    <div class="shell">
+        <div class="workspace">
+            <aside class="mode-nav">
+                <!-- Fakeapp -->
+                <div class="nav-group">
+                    <button class="nav-top-btn active open" data-group="fakeapp">
+                        <span>Fakeapp</span>
+                        <svg class="chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                    <div class="nav-sub open" id="fakeapp-sub">
+                        <button class="mode-btn active" data-view="device">Device</button>
+                        <button class="mode-btn" data-view="sim">SIM</button>
+                        <button class="mode-btn" data-view="hybrid">Hybrid</button>
+                    </div>
+                </div>
+                <!-- Deepfake -->
+                <div class="nav-group">
+                    <button class="nav-top-btn" data-group="deepfake">
+                        <span>Deepfake</span>
+                        <svg class="chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                    <div class="nav-sub" id="deepfake-sub">
+                        <button class="mode-btn" data-view="df-image">Image</button>
+                        <button class="mode-btn" data-view="df-video">Video</button>
+                        <button class="mode-btn" data-view="df-doc">Doc</button>
+                        <button class="mode-btn" data-view="df-voice">Voice</button>
+                    </div>
+                </div>
+                <!-- Customer Journey -->
+                <div class="nav-group">
+                    <button class="nav-top-btn" data-group="journey">
+                        <span>Customer Journey</span>
+                        <svg class="chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                    <div class="nav-sub" id="journey-sub">
+                        <button class="mode-btn" data-view="journey-situations">Situations</button>
+                        <button class="mode-btn" data-view="journey-scenarios">Scenarios</button>
+                        <button class="mode-btn" data-view="journey-config">Config</button>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="views">
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     FAKEAPP: DEVICE
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="device-view" class="view active">
+                    <div class="panel hero">
+                        <h2>Device Authentication</h2>
+                        <p>Register a device and complete challenge-sign verification with context token validation.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>1. Register Device</h3>
+                        <div class="form-grid">
+                            <label>Client ID <input id="dev-client-id" type="text" value="client_123"></label>
+                            <label>User Reference <input id="dev-user-ref" type="text" value="user_001"></label>
+                            <label>Platform <input id="dev-platform" type="text" value="android"></label>
+                            <label>App Version <input id="dev-app-version" type="text" value="1.0.0"></label>
+                            <label>Device Model <input id="dev-device-model" type="text" value="Pixel 7"></label>
+                            <label>OS Version <input id="dev-os-version" type="text" value="14"></label>
+                            <label>IP Address <input id="dev-ip-address" type="text" value="192.168.1.10"></label>
+                        </div>
+                        <button id="btn-dev-register" class="btn primary">Register Device</button>
+                        <div id="dev-reg-status" class="status hidden">
+                            <div class="status-head"><span>Registration Output</span><span id="dev-reg-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="dev-reg-output"></pre>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h3>2. Complete Device Auth</h3>
+                        <div class="steps">
+                            <div id="dev-step-start" class="step">Start session</div>
+                            <div id="dev-step-sign" class="step">Sign challenge</div>
+                            <div id="dev-step-verify" class="step">Verify token</div>
+                        </div>
+                        <div class="btn-row">
+                            <button id="btn-auth-start" class="btn primary" disabled>Start Auth</button>
+                            <button id="btn-auth-complete" class="btn secondary" disabled>Complete Auth</button>
+                        </div>
+                        <div id="dev-auth-status" class="status hidden">
+                            <div class="status-head"><span>Authentication Output</span><span id="dev-auth-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="dev-auth-output">Register device to begin.</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     FAKEAPP: SIM
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="sim-view" class="view">
+                    <div class="panel hero">
+                        <h2>SIM Authentication</h2>
+                        <p>Silent network-based SIM verification using MSISDN identity.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>SIM Session</h3>
+                        <div class="form-grid">
+                            <label>Client ID <input id="sim-client-id" type="text" value="client_123"></label>
+                            <label>User Reference <input id="sim-user-ref" type="text" value="user_001"></label>
+                            <label>MSISDN <input id="sim-msisdn" type="text" value="917905968734"></label>
+                        </div>
+                        <div class="btn-row">
+                            <button id="btn-sim-start" class="btn primary">Start SIM Auth</button>
+                            <button id="btn-sim-complete" class="btn secondary" disabled>Poll Result</button>
+                        </div>
+                        <div id="sim-status" class="status">
+                            <div class="status-head"><span>SIM Output</span><span id="sim-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="sim-output">Awaiting session start.</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     FAKEAPP: HYBRID
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="hybrid-view" class="view">
+                    <div class="panel hero">
+                        <h2>Hybrid Authentication</h2>
+                        <p>Combines SIM verification and device cryptography in one top-level auth session.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>1. Register Hybrid Device</h3>
+                        <div class="form-grid">
+                            <label>Client ID <input id="hy-client-id" type="text" value="client_123"></label>
+                            <label>User Reference <input id="hy-user-ref" type="text" value="user_001"></label>
+                            <label>MSISDN <input id="hy-msisdn" type="text" value="917905968734"></label>
+                        </div>
+                        <button id="btn-hy-register" class="btn primary">Register Hybrid Device</button>
+                        <div id="hy-reg-status" class="status hidden">
+                            <div class="status-head"><span>Hybrid Registration</span><span id="hy-reg-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="hy-reg-output"></pre>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h3>2. Start + Complete Hybrid Auth</h3>
+                        <div class="btn-row">
+                            <button id="btn-hy-start" class="btn primary" disabled>Start Hybrid Auth</button>
+                            <button id="btn-hy-complete" class="btn secondary" disabled>Complete Hybrid Auth</button>
+                        </div>
+                        <div id="hy-auth-status" class="status hidden">
+                            <div class="status-head"><span>Hybrid Auth Output</span><span id="hy-auth-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="hy-auth-output">Register hybrid device to begin.</pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     DEEPFAKE: IMAGE
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="df-image-view" class="view">
+                    <div class="panel hero">
+                        <h2>Face Image Detection</h2>
+                        <p>Upload an image to detect AI-generated or manipulated faces.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>Analyze Image</h3>
+                        <div class="file-drop-area" id="face-img-drop">
+                            <span id="face-img-filename">Drop image here or click to select</span>
+                            <input type="file" id="face-img-file" accept="image/*" class="file-input">
+                        </div>
+                        <button id="btn-face-img" class="btn primary" style="margin-top:12px">Analyze Image</button>
+                        <div id="face-img-status" class="status hidden">
+                            <div class="status-head"><span>Face Image Output</span><span id="face-img-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="face-img-output"></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     DEEPFAKE: VIDEO
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="df-video-view" class="view">
+                    <div class="panel hero">
+                        <h2>Face Video Detection</h2>
+                        <p>Upload a video for async deepfake frame analysis.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>Submit Video</h3>
+                        <div class="form-grid" style="grid-template-columns:1fr">
+                            <label>Sample Every N Frames <input id="face-vid-sample" type="number" value="10" min="1"></label>
+                        </div>
+                        <div class="file-drop-area" id="face-vid-drop">
+                            <span id="face-vid-filename">Drop video here or click to select</span>
+                            <input type="file" id="face-vid-file" accept="video/*" class="file-input">
+                        </div>
+                        <div class="btn-row" style="margin-top:12px">
+                            <button id="btn-face-vid-submit" class="btn primary">Submit Video</button>
+                            <button id="btn-face-vid-poll" class="btn secondary" disabled>Poll Result</button>
+                        </div>
+                        <div id="face-vid-status" class="status hidden">
+                            <div class="status-head"><span>Face Video Output</span><span id="face-vid-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="face-vid-output"></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     DEEPFAKE: DOC TAMPERING
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="df-doc-view" class="view">
+                    <div class="panel hero">
+                        <h2>Document Tampering Detection</h2>
+                        <p>Upload a document image to run multi-layer deepfake detection for tampering.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>Analyze Document</h3>
+                        <div class="file-drop-area" id="df-doc-drop">
+                            <span id="df-doc-filename">Drop image here or click to select</span>
+                            <input type="file" id="df-doc-file" accept="image/*" class="file-input">
+                        </div>
+                        <div class="btn-row" style="margin-top:12px">
+                            <button id="btn-doc-sync" class="btn primary">Analyze (Sync)</button>
+                            <button id="btn-doc-async" class="btn secondary">Submit Async</button>
+                            <button id="btn-doc-poll" class="btn secondary" disabled>Poll Result</button>
+                        </div>
+                        <div id="df-doc-status" class="status hidden">
+                            <div class="status-head"><span>Doc Tampering Output</span><span id="df-doc-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="df-doc-output"></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     DEEPFAKE: VOICE
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="df-voice-view" class="view">
+                    <div class="panel hero">
+                        <h2>Voice Analysis</h2>
+                        <p>Upload an audio file to detect AI-synthesised or tampered voice.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>Analyze Audio</h3>
+                        <div class="file-drop-area" id="voice-drop">
+                            <span id="voice-filename">Drop audio file here or click to select</span>
+                            <input type="file" id="voice-file" accept="audio/*" class="file-input">
+                        </div>
+                        <div class="btn-row" style="margin-top:12px">
+                            <button id="btn-voice-sync" class="btn primary">Analyze (Sync)</button>
+                            <button id="btn-voice-async" class="btn secondary">Submit Async</button>
+                            <button id="btn-voice-poll" class="btn secondary" disabled>Poll Result</button>
+                        </div>
+                        <div id="voice-status" class="status hidden">
+                            <div class="status-head"><span>Voice Output</span><span id="voice-badge" class="badge badge-idle">IDLE</span></div>
+                            <pre id="voice-output"></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     CUSTOMER JOURNEY: SITUATIONS
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="journey-situations-view" class="view">
+                    <div class="panel hero">
+                        <h2>Customer Situations</h2>
+                        <p>Explore real-world fraud scenarios and see how Vishwas protects users.</p>
+                    </div>
+                    <div class="chapters-grid" id="chaptersGrid"></div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     CUSTOMER JOURNEY: SCENARIOS
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="journey-scenarios-view" class="view">
+                    <div class="panel hero">
+                        <h2>API Scenario Playground</h2>
+                        <p>Select a scenario and run the full API flow to see how Vishwas handles authentication.</p>
+                    </div>
+                    <div class="scenario-tabs" id="scenarioTabs"></div>
+                    <div class="panel" id="scenarioCard"></div>
+                </section>
+
+                <!-- ═══════════════════════════════════════════════════════════════════
+                     CUSTOMER JOURNEY: CONFIG
+                     ═══════════════════════════════════════════════════════════════════ -->
+                <section id="journey-config-view" class="view">
+                    <div class="panel hero">
+                        <h2>Configuration</h2>
+                        <p>Adjust decision thresholds and signal weights for authentication.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>Decision Thresholds</h3>
+                        <p style="margin-bottom:16px">Set the minimum trust score required for each decision outcome.</p>
+                        <div class="slider-group">
+                            <div class="slider-row slider-allow">
+                                <div class="slider-header">
+                                    <span class="slider-name val-allow">ALLOW threshold</span>
+                                    <span class="slider-val val-allow" id="t-allow-val">70</span>
+                                </div>
+                                <input type="range" id="t-allow" min="0" max="100" value="70">
+                                <div class="slider-desc">Score ≥ this → authentication ALLOWED</div>
+                            </div>
+                            <div class="slider-row slider-review">
+                                <div class="slider-header">
+                                    <span class="slider-name val-review">REVIEW threshold</span>
+                                    <span class="slider-val val-review" id="t-review-val">40</span>
+                                </div>
+                                <input type="range" id="t-review" min="0" max="100" value="40">
+                                <div class="slider-desc">Score ≥ this → step-up challenge triggered</div>
+                            </div>
+                            <div class="slider-row slider-deny">
+                                <div class="slider-header">
+                                    <span class="slider-name val-deny">DENY threshold</span>
+                                    <span class="slider-val val-deny" id="t-deny-val">20</span>
+                                </div>
+                                <input type="range" id="t-deny" min="0" max="100" value="20">
+                                <div class="slider-desc">Score &lt; this → authentication DENIED</div>
+                            </div>
+                            <div class="threshold-bar">
+                                <div class="tbar-deny" id="tbar-deny" style="width:20%">DENY</div>
+                                <div class="tbar-review" id="tbar-review" style="width:20%">REVIEW</div>
+                                <div class="tbar-allow" id="tbar-allow">ALLOW</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h3>Signal Weights</h3>
+                        <p style="margin-bottom:16px">Adjust how much each signal contributes to the overall trust score.</p>
+                        <div class="slider-group">
+                            <div class="slider-row">
+                                <div class="slider-header">
+                                    <span class="slider-name">Device Binding</span>
+                                    <span class="slider-val" id="w-device-val">40</span>
+                                </div>
+                                <input type="range" id="w-device" min="0" max="100" value="40">
+                            </div>
+                            <div class="slider-row">
+                                <div class="slider-header">
+                                    <span class="slider-name">SIM Identity</span>
+                                    <span class="slider-val" id="w-sim-val">30</span>
+                                </div>
+                                <input type="range" id="w-sim" min="0" max="100" value="30">
+                            </div>
+                            <div class="slider-row">
+                                <div class="slider-header">
+                                    <span class="slider-name">IP Reputation</span>
+                                    <span class="slider-val" id="w-ip-val">15</span>
+                                </div>
+                                <input type="range" id="w-ip" min="0" max="100" value="15">
+                            </div>
+                            <div class="slider-row">
+                                <div class="slider-header">
+                                    <span class="slider-name">Behavioral Signals</span>
+                                    <span class="slider-val" id="w-behaviour-val">15</span>
+                                </div>
+                                <input type="range" id="w-behaviour" min="0" max="100" value="15">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Story Modal -->
+    <div class="story-overlay" id="storyOverlay">
+        <div class="story-modal" id="storyModal">
+            <div class="story-close"><button onclick="closeStory()">✕</button></div>
+            <div id="storyContent"></div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // ══════════════════════════════════════════════════════════════════════════
+        // NAVIGATION
+        // ══════════════════════════════════════════════════════════════════════════
+        const views = document.querySelectorAll('.view');
+
+        document.querySelectorAll('.nav-top-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const group = btn.dataset.group;
+                const sub = document.getElementById(`${group}-sub`);
+                if (!sub) return;
+                const isOpen = sub.classList.contains('open');
+
+                document.querySelectorAll('.nav-sub').forEach(s => s.classList.remove('open'));
+                document.querySelectorAll('.nav-top-btn').forEach(b => b.classList.remove('open', 'active'));
+
+                if (!isOpen) {
+                    sub.classList.add('open');
+                    btn.classList.add('open', 'active');
+                    const first = sub.querySelector('.mode-btn');
+                    if (first) first.click();
+                }
+            });
+        });
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.view;
+                if (!target) return;
+                const targetView = document.getElementById(`${target}-view`);
+                if (!targetView) return;
+
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                views.forEach(v => v.classList.remove('active'));
+                btn.classList.add('active');
+                targetView.classList.add('active');
+
+                const parentSub = btn.closest('.nav-sub');
+                if (parentSub) {
+                    const parentTop = parentSub.previousElementSibling;
+                    if (parentTop) parentTop.classList.add('active');
+                }
+            });
+        });
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // HELPERS
+        // ══════════════════════════════════════════════════════════════════════════
+        const publicKeyBase64 = 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0...';
+        const state = {
+            device: { bindingId: null, deviceId: null, authSessionId: null, challengeId: null },
+            sim: { authSessionId: null },
+            hybrid: { bindingId: null, deviceId: null, authSessionId: null },
+            faceVid: { jobId: null },
+            voice: { taskId: null },
+            doc: { taskId: null }
+        };
+
+        function setStatus(boxId, badgeId, outputId, payload, status = 'IDLE') {
+            const box = document.getElementById(boxId);
+            const badge = document.getElementById(badgeId);
+            const output = document.getElementById(outputId);
+            if (!box || !badge || !output) return;
+            box.classList.remove('hidden');
+            output.textContent = typeof payload === 'object' ? JSON.stringify(payload, null, 2) : String(payload);
+            badge.className = `badge badge-${status.toLowerCase()}`;
+            badge.textContent = status;
+        }
+
+        function resetDeviceSteps() {
+            ['dev-step-start', 'dev-step-sign', 'dev-step-verify'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active', 'completed');
+            });
+        }
+
+        async function postJSON(url, body) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            let data;
+            try { data = await response.json(); }
+            catch { data = { error: 'invalid_response' }; }
+            return { response, data };
+        }
+
+        function setupFileDrop(dropId, inputId, filenameId) {
+            const drop = document.getElementById(dropId);
+            const input = document.getElementById(inputId);
+            const label = document.getElementById(filenameId);
+            if (!drop || !input || !label) return;
+            const placeholder = label.textContent;
+
+            function updateLabel(file) {
+                if (file) {
+                    label.textContent = file.name;
+                    drop.classList.add('has-file');
+                } else {
+                    label.textContent = placeholder;
+                    drop.classList.remove('has-file');
+                }
+            }
+
+            input.addEventListener('change', () => updateLabel(input.files[0] || null));
+            drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+            drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+            drop.addEventListener('drop', e => {
+                e.preventDefault();
+                drop.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) {
+                    const dt = new DataTransfer();
+                    dt.items.add(e.dataTransfer.files[0]);
+                    input.files = dt.files;
+                    updateLabel(e.dataTransfer.files[0]);
+                }
+            });
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        setupFileDrop('face-img-drop', 'face-img-file', 'face-img-filename');
+        setupFileDrop('face-vid-drop', 'face-vid-file', 'face-vid-filename');
+        setupFileDrop('df-doc-drop', 'df-doc-file', 'df-doc-filename');
+        setupFileDrop('voice-drop', 'voice-file', 'voice-filename');
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // FAKEAPP — DEVICE
+        // ══════════════════════════════════════════════════════════════════════════
+        document.getElementById('btn-dev-register').addEventListener('click', async () => {
+            const clientId = document.getElementById('dev-client-id').value.trim();
+            const userRef = document.getElementById('dev-user-ref').value.trim();
+            const platform = document.getElementById('dev-platform').value.trim();
+            const appVersion = document.getElementById('dev-app-version').value.trim();
+            const deviceModel = document.getElementById('dev-device-model').value.trim();
+            const osVersion = document.getElementById('dev-os-version').value.trim();
+            const ipAddress = document.getElementById('dev-ip-address').value.trim();
+            const deviceId = `${platform}-${Math.random().toString(36).slice(2, 10)}`;
+
+            resetDeviceSteps();
+            setStatus('dev-reg-status', 'dev-reg-badge', 'dev-reg-output', 'Registering device...', 'PENDING');
+
+            try {
+                const { response, data } = await postJSON('/v1/device/register', {
+                    client_id: clientId, user_ref: userRef,
+                    device_info: { device_id: deviceId, platform, app_version: appVersion, device_model: deviceModel, os_version: osVersion },
+                    ip_address: ipAddress, public_key: publicKeyBase64
+                });
+                if (!response.ok) { setStatus('dev-reg-status', 'dev-reg-badge', 'dev-reg-output', data, 'ERROR'); return; }
+                state.device.bindingId = data.device_binding_id;
+                state.device.deviceId = deviceId;
+                document.getElementById('btn-auth-start').disabled = false;
+                document.getElementById('btn-auth-complete').disabled = true;
+                setStatus('dev-reg-status', 'dev-reg-badge', 'dev-reg-output', data, 'SUCCESS');
+            } catch (err) {
+                setStatus('dev-reg-status', 'dev-reg-badge', 'dev-reg-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        document.getElementById('btn-auth-start').addEventListener('click', async () => {
+            if (!state.device.bindingId) return;
+            const clientId = document.getElementById('dev-client-id').value.trim();
+            const userRef = document.getElementById('dev-user-ref').value.trim();
+            const platform = document.getElementById('dev-platform').value.trim();
+            const ipAddress = document.getElementById('dev-ip-address').value.trim();
+
+            resetDeviceSteps();
+            document.getElementById('dev-step-start').classList.add('active');
+            setStatus('dev-auth-status', 'dev-auth-badge', 'dev-auth-output', 'Starting auth...', 'PENDING');
+
+            try {
+                const { response, data } = await postJSON('/v1/auth/start', {
+                    client_id: clientId, user_ref: userRef, action: 'login', mode: 'device',
+                    device_binding_id: state.device.bindingId,
+                    device_info: { platform, device_id: state.device.deviceId },
+                    ip_address: ipAddress
+                });
+                if (!response.ok || !data.device?.challenge_id) {
+                    setStatus('dev-auth-status', 'dev-auth-badge', 'dev-auth-output', data, 'ERROR'); return;
+                }
+                state.device.authSessionId = data.auth_session_id;
+                state.device.challengeId = data.device.challenge_id;
+                document.getElementById('dev-step-start').classList.add('completed');
+                document.getElementById('dev-step-sign').classList.add('active');
+                document.getElementById('btn-auth-complete').disabled = false;
+                setStatus('dev-auth-status', 'dev-auth-badge', 'dev-auth-output', 'Session started. Click Complete Auth.', 'PENDING');
+            } catch (err) {
+                setStatus('dev-auth-status', 'dev-auth-badge', 'dev-auth-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        document.getElementById('btn-auth-complete').addEventListener('click', async () => {
+            if (!state.device.authSessionId) return;
+            const clientId = document.getElementById('dev-client-id').value.trim();
+
+            document.getElementById('dev-step-sign').classList.add('completed');
+            document.getElementById('dev-step-verify').classList.add('active');
+            setStatus('dev-auth-status', 'dev-auth-badge', 'dev-auth-output', 'Completing auth...', 'PENDING');
+
+            try {
+                const { response, data } = await postJSON('/v1/auth/complete', {
+                    client_id: clientId, mode: 'device',
+                    auth_session_id: state.device.authSessionId,
+                    challenge_id: state.device.challengeId,
+                    device_signature: 'bypass_signature'
+                });
+                if (!response.ok || data.decision !== 'ALLOW') {
+                    setStatus('dev-auth-status', 'dev-auth-badge', 'dev-auth-output', data, 'ERROR'); return;
+                }
+                const verify = await postJSON('/v1/auth/verify', { client_id: clientId, auth_context_token: data.auth_context_token });
+                document.getElementById('dev-step-verify').classList.add('completed');
+                setStatus('dev-auth-status', 'dev-auth-badge', 'dev-auth-output', { auth: data, verify: verify.data }, 'SUCCESS');
+            } catch (err) {
+                setStatus('dev-auth-status', 'dev-auth-badge', 'dev-auth-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // FAKEAPP — SIM
+        // ══════════════════════════════════════════════════════════════════════════
+        document.getElementById('btn-sim-start').addEventListener('click', async () => {
+            const clientId = document.getElementById('sim-client-id').value.trim();
+            const userRef = document.getElementById('sim-user-ref').value.trim();
+            const msisdn = document.getElementById('sim-msisdn').value.trim();
+
+            setStatus('sim-status', 'sim-badge', 'sim-output', 'Starting SIM auth...', 'PENDING');
+            try {
+                const { response, data } = await postJSON('/v1/auth/start', { client_id: clientId, user_ref: userRef, action: 'check', mode: 'sim', msisdn });
+                if (!response.ok) { setStatus('sim-status', 'sim-badge', 'sim-output', data, 'ERROR'); return; }
+                state.sim.authSessionId = data.auth_session_id;
+                document.getElementById('btn-sim-complete').disabled = false;
+                setStatus('sim-status', 'sim-badge', 'sim-output', 'Session started. Click Poll Result.', 'PENDING');
+            } catch (err) {
+                setStatus('sim-status', 'sim-badge', 'sim-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        document.getElementById('btn-sim-complete').addEventListener('click', async () => {
+            if (!state.sim.authSessionId) return;
+            const clientId = document.getElementById('sim-client-id').value.trim();
+            setStatus('sim-status', 'sim-badge', 'sim-output', 'Polling...', 'PENDING');
+            try {
+                const { response, data } = await postJSON('/v1/auth/complete', { client_id: clientId, mode: 'sim', auth_session_id: state.sim.authSessionId });
+                const status = data.decision === 'ALLOW' ? 'SUCCESS' : data.decision === 'DENY' ? 'ERROR' : 'PENDING';
+                setStatus('sim-status', 'sim-badge', 'sim-output', data, status);
+            } catch (err) {
+                setStatus('sim-status', 'sim-badge', 'sim-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // FAKEAPP — HYBRID
+        // ══════════════════════════════════════════════════════════════════════════
+        document.getElementById('btn-hy-register').addEventListener('click', async () => {
+            const clientId = document.getElementById('hy-client-id').value.trim();
+            const userRef = document.getElementById('hy-user-ref').value.trim();
+            const deviceId = `hy-web-${Math.random().toString(36).slice(2, 10)}`;
+
+            setStatus('hy-reg-status', 'hy-reg-badge', 'hy-reg-output', 'Registering...', 'PENDING');
+            try {
+                const { response, data } = await postJSON('/v1/device/register', {
+                    client_id: clientId, user_ref: userRef,
+                    device_info: { device_id: deviceId, platform: 'web', device_model: navigator.platform || 'browser', os_version: 'stable' },
+                    public_key: publicKeyBase64
+                });
+                if (!response.ok) { setStatus('hy-reg-status', 'hy-reg-badge', 'hy-reg-output', data, 'ERROR'); return; }
+                state.hybrid.bindingId = data.device_binding_id;
+                state.hybrid.deviceId = deviceId;
+                document.getElementById('btn-hy-start').disabled = false;
+                setStatus('hy-reg-status', 'hy-reg-badge', 'hy-reg-output', data, 'SUCCESS');
+            } catch (err) {
+                setStatus('hy-reg-status', 'hy-reg-badge', 'hy-reg-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        document.getElementById('btn-hy-start').addEventListener('click', async () => {
+            if (!state.hybrid.bindingId) return;
+            const clientId = document.getElementById('hy-client-id').value.trim();
+            const userRef = document.getElementById('hy-user-ref').value.trim();
+            const msisdn = document.getElementById('hy-msisdn').value.trim();
+
+            setStatus('hy-auth-status', 'hy-auth-badge', 'hy-auth-output', 'Starting hybrid auth...', 'PENDING');
+            try {
+                const { response, data } = await postJSON('/v1/auth/start', {
+                    client_id: clientId, user_ref: userRef, action: 'login', mode: 'hybrid', msisdn,
+                    device_binding_id: state.hybrid.bindingId,
+                    device_info: { platform: 'web', device_id: state.hybrid.deviceId }
+                });
+                if (!response.ok) { setStatus('hy-auth-status', 'hy-auth-badge', 'hy-auth-output', data, 'ERROR'); return; }
+                state.hybrid.authSessionId = data.auth_session_id;
+                document.getElementById('btn-hy-complete').disabled = false;
+                setStatus('hy-auth-status', 'hy-auth-badge', 'hy-auth-output', 'Session started. Click Complete.', 'PENDING');
+            } catch (err) {
+                setStatus('hy-auth-status', 'hy-auth-badge', 'hy-auth-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        document.getElementById('btn-hy-complete').addEventListener('click', async () => {
+            if (!state.hybrid.authSessionId) return;
+            const clientId = document.getElementById('hy-client-id').value.trim();
+            setStatus('hy-auth-status', 'hy-auth-badge', 'hy-auth-output', 'Completing...', 'PENDING');
+            try {
+                const { response, data } = await postJSON('/v1/auth/complete', {
+                    client_id: clientId, mode: 'hybrid',
+                    auth_session_id: state.hybrid.authSessionId,
+                    device_signature: 'bypass_signature'
+                });
+                const status = data.decision === 'ALLOW' ? 'SUCCESS' : data.decision === 'DENY' ? 'ERROR' : 'PENDING';
+                setStatus('hy-auth-status', 'hy-auth-badge', 'hy-auth-output', data, status);
+            } catch (err) {
+                setStatus('hy-auth-status', 'hy-auth-badge', 'hy-auth-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // DEEPFAKE — IMAGE
+        // ══════════════════════════════════════════════════════════════════════════
+        document.getElementById('btn-face-img').addEventListener('click', async () => {
+            const file = document.getElementById('face-img-file').files[0];
+            if (!file) { setStatus('face-img-status', 'face-img-badge', 'face-img-output', 'No file selected.', 'ERROR'); return; }
+            setStatus('face-img-status', 'face-img-badge', 'face-img-output', 'Analyzing...', 'PENDING');
+            const form = new FormData();
+            form.append('file', file);
+            try {
+                const resp = await fetch('/v1/face/image', { method: 'POST', body: form });
+                const data = await resp.json();
+                setStatus('face-img-status', 'face-img-badge', 'face-img-output', data, resp.ok ? 'SUCCESS' : 'ERROR');
+            } catch (err) {
+                setStatus('face-img-status', 'face-img-badge', 'face-img-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // DEEPFAKE — VIDEO
+        // ══════════════════════════════════════════════════════════════════════════
+        document.getElementById('btn-face-vid-submit').addEventListener('click', async () => {
+            const file = document.getElementById('face-vid-file').files[0];
+            const sampleEvery = document.getElementById('face-vid-sample').value || 10;
+            if (!file) { setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', 'No file selected.', 'ERROR'); return; }
+            setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', 'Submitting...', 'PENDING');
+            const form = new FormData();
+            form.append('file', file);
+            try {
+                const resp = await fetch(`/v1/face/video?sample_every=${sampleEvery}`, { method: 'POST', body: form });
+                const data = await resp.json();
+                if (!resp.ok) { setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, 'ERROR'); return; }
+                state.faceVid.jobId = data.job_id;
+                document.getElementById('btn-face-vid-poll').disabled = false;
+                setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, 'PENDING');
+            } catch (err) {
+                setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        document.getElementById('btn-face-vid-poll').addEventListener('click', async () => {
+            if (!state.faceVid.jobId) return;
+            setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', 'Polling...', 'PENDING');
+            try {
+                const resp = await fetch(`/v1/face/video/${state.faceVid.jobId}`);
+                const data = await resp.json();
+                const done = data.status === 'completed' || data.status === 'failed';
+                setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, done ? (data.status === 'completed' ? 'SUCCESS' : 'ERROR') : 'PENDING');
+            } catch (err) {
+                setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // DEEPFAKE — DOC TAMPERING
+        // ══════════════════════════════════════════════════════════════════════════
+        async function docAnalyze(sync) {
+            const file = document.getElementById('df-doc-file').files[0];
+            if (!file) { setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', 'No file selected.', 'ERROR'); return; }
+            setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', sync ? 'Analyzing...' : 'Submitting...', 'PENDING');
+            try {
+                const b64 = await fileToBase64(file);
+                const url = sync ? '/v1/deepfake/analyze?sync=true' : '/v1/deepfake/analyze';
+                const { response, data } = await postJSON(url, { data: b64 });
+                if (!response.ok && response.status !== 202) { setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', data, 'ERROR'); return; }
+                if (!sync) {
+                    state.doc.taskId = data.task_id;
+                    document.getElementById('btn-doc-poll').disabled = false;
+                }
+                setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', data, sync ? 'SUCCESS' : 'PENDING');
+            } catch (err) {
+                setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', `Error: ${err.message}`, 'ERROR');
+            }
+        }
+
+        document.getElementById('btn-doc-sync').addEventListener('click', () => docAnalyze(true));
+        document.getElementById('btn-doc-async').addEventListener('click', () => docAnalyze(false));
+        document.getElementById('btn-doc-poll').addEventListener('click', async () => {
+            if (!state.doc.taskId) return;
+            setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', 'Polling...', 'PENDING');
+            try {
+                const resp = await fetch(`/v1/deepfake/analyze/${state.doc.taskId}`);
+                const data = await resp.json();
+                const done = data.status === 'completed' || data.status === 'failed';
+                setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', data, done ? (data.status === 'completed' ? 'SUCCESS' : 'ERROR') : 'PENDING');
+            } catch (err) {
+                setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // DEEPFAKE — VOICE
+        // ══════════════════════════════════════════════════════════════════════════
+        async function voiceAnalyze(sync) {
+            const file = document.getElementById('voice-file').files[0];
+            if (!file) { setStatus('voice-status', 'voice-badge', 'voice-output', 'No file selected.', 'ERROR'); return; }
+            setStatus('voice-status', 'voice-badge', 'voice-output', sync ? 'Analyzing...' : 'Submitting...', 'PENDING');
+            try {
+                const b64 = await fileToBase64(file);
+                const url = sync ? '/v1/voice/analyze?sync=true' : '/v1/voice/analyze';
+                const { response, data } = await postJSON(url, { data: b64 });
+                if (!response.ok && response.status !== 202) { setStatus('voice-status', 'voice-badge', 'voice-output', data, 'ERROR'); return; }
+                if (!sync) {
+                    state.voice.taskId = data.task_id;
+                    document.getElementById('btn-voice-poll').disabled = false;
+                }
+                setStatus('voice-status', 'voice-badge', 'voice-output', data, sync ? 'SUCCESS' : 'PENDING');
+            } catch (err) {
+                setStatus('voice-status', 'voice-badge', 'voice-output', `Error: ${err.message}`, 'ERROR');
+            }
+        }
+
+        document.getElementById('btn-voice-sync').addEventListener('click', () => voiceAnalyze(true));
+        document.getElementById('btn-voice-async').addEventListener('click', () => voiceAnalyze(false));
+        document.getElementById('btn-voice-poll').addEventListener('click', async () => {
+            if (!state.voice.taskId) return;
+            setStatus('voice-status', 'voice-badge', 'voice-output', 'Polling...', 'PENDING');
+            try {
+                const resp = await fetch(`/v1/voice/analyze/${state.voice.taskId}`);
+                const data = await resp.json();
+                const done = data.status === 'completed' || data.status === 'failed';
+                setStatus('voice-status', 'voice-badge', 'voice-output', data, done ? (data.status === 'completed' ? 'SUCCESS' : 'ERROR') : 'PENDING');
+            } catch (err) {
+                setStatus('voice-status', 'voice-badge', 'voice-output', `Error: ${err.message}`, 'ERROR');
+            }
+        });
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // CUSTOMER JOURNEY — SITUATIONS (CHAPTERS)
+        // ══════════════════════════════════════════════════════════════════════════
+        const chapters = [
+            { id: 0, badge: 'Chapter 1', title: 'The Cloned SIM', desc: 'A telecom insider clones a SIM. Credentials stolen. The system shuts the door.', tags: ['SIM-Swap', 'Device Binding'], note: 'Device + SIM together create an unbypassable barrier.', steps: [
+                { type: 'normal', label: 'Account Setup', title: 'Customer opens TrustBank', desc: 'App registers device + SIM fingerprint.' },
+                { type: 'normal', label: 'Normal Usage', title: 'Months of clean logins', desc: 'Every session re-validates the same device/SIM pair.' },
+                { type: 'threat', label: 'Threat', title: 'Social engineering attack', desc: 'Attacker extracts credentials via phone call.' },
+                { type: 'threat', label: 'Escalation', title: 'SIM cloned by insider', desc: 'Corrupt telecom employee duplicates the victim\'s SIM.' },
+                { type: 'detect', label: 'Detection', title: 'Login attempt blocked', desc: 'IMSI mismatch + unrecognized device.', insight: 'IMSI mismatch detected. Access denied.' },
+                { type: 'resolve', label: 'Resolution', title: 'Account remains secure', desc: 'Fraudster locked out. Customer gets security alert.' }
+            ]},
+            { id: 1, badge: 'Chapter 2', title: 'The Deepfake Call', desc: 'AI voice impersonates a CEO. Liveness detection catches it.', tags: ['Voice Analysis', 'Liveness'], note: 'AI cannot replicate biological markers of live speech.', steps: [
+                { type: 'normal', label: 'Setup', title: 'CFO receives urgent call', desc: 'Voice sounds exactly like the CEO.' },
+                { type: 'threat', label: 'Threat', title: 'AI-generated deepfake', desc: 'Attackers trained a voice clone from recordings.' },
+                { type: 'detect', label: 'Detection', title: 'Voice analysis triggered', desc: 'Synthetic speech patterns detected.', insight: 'Spectral anomalies found. Marked as synthetic.' },
+                { type: 'resolve', label: 'Resolution', title: 'Transfer blocked', desc: 'CFO alerted. Real CEO confirms no call.' }
+            ]},
+            { id: 2, badge: 'Chapter 3', title: 'The Fake ID', desc: 'Forged passport submitted for KYC. Tampering detection catches it.', tags: ['Document Analysis', 'Tampering'], note: 'Digital traces are invisible to humans but detectable by AI.', steps: [
+                { type: 'normal', label: 'Application', title: 'New account requested', desc: 'User submits passport for verification.' },
+                { type: 'threat', label: 'Threat', title: 'Digitally altered document', desc: 'Photo and name edited with software.' },
+                { type: 'detect', label: 'Detection', title: 'Tampering flags raised', desc: 'Compression artifacts detected.', insight: 'JPEG ghost analysis reveals edits.' },
+                { type: 'resolve', label: 'Resolution', title: 'Application denied', desc: 'Fraud team alerted. Identity theft prevented.' }
+            ]},
+            { id: 3, badge: 'Chapter 4', title: 'The Account Takeover', desc: 'Credentials leaked in breach. Device binding prevents access.', tags: ['Device Binding', 'Breach Protection'], note: 'Passwords can be stolen. Devices cannot be cloned.', steps: [
+                { type: 'normal', label: 'Breach', title: 'Credentials exposed', desc: 'Email and password appear on dark web.' },
+                { type: 'threat', label: 'Threat', title: 'Login from unknown device', desc: 'Attacker tries from a new phone abroad.' },
+                { type: 'detect', label: 'Detection', title: 'Device mismatch blocked', desc: 'Unrecognized device + unusual location.', insight: 'Device ID not in registry. Blocked.' },
+                { type: 'resolve', label: 'Resolution', title: 'User notified', desc: 'Password reset prompted. Account secured.' }
+            ]},
+            { id: 4, badge: 'Chapter 5', title: 'High-Value Transfer', desc: 'Large transaction triggers hybrid auth. All signals must align.', tags: ['Hybrid Auth', 'Step-Up'], note: 'High-risk actions demand higher confidence.', steps: [
+                { type: 'normal', label: 'Request', title: '$50,000 transfer initiated', desc: 'Customer requests large wire to new beneficiary.' },
+                { type: 'detect', label: 'Risk Assessment', title: 'Hybrid auth triggered', desc: 'Amount + new recipient = elevated risk.', insight: 'Transaction risk: HIGH. Hybrid required.' },
+                { type: 'normal', label: 'Verification', title: 'Multi-signal check', desc: 'Device ✓ SIM ✓ Biometric ✓' },
+                { type: 'resolve', label: 'Resolution', title: 'Transfer approved', desc: 'All signals aligned. Transaction completes.' }
+            ]}
+        ];
+
+        function buildChaptersGrid() {
+            const grid = document.getElementById('chaptersGrid');
+            grid.innerHTML = chapters.map(ch => `
+                <div class="chapter-card" onclick="openStory(${ch.id})">
+                    <div class="chapter-badge">${ch.badge}</div>
+                    <h3 class="chapter-title">${ch.title}</h3>
+                    <p class="chapter-desc">${ch.desc}</p>
+                    <div class="chapter-tags">${ch.tags.map(t => `<span class="chapter-tag">${t}</span>`).join('')}</div>
+                </div>
+            `).join('');
+        }
+
+        let currentChapter = 0;
+        window.openStory = function(idx) {
+            currentChapter = idx;
+            renderStory(idx);
+            document.getElementById('storyOverlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        };
+        window.closeStory = function() {
+            document.getElementById('storyOverlay').classList.remove('active');
+            document.body.style.overflow = '';
+        };
+        window.navigateStory = function(idx) {
+            currentChapter = idx;
+            renderStory(idx);
+            document.getElementById('storyModal').scrollTop = 0;
+        };
+
+        function renderStory(idx) {
+            const ch = chapters[idx];
+            const icons = { normal: '✓', threat: '⚠', detect: '🔍', resolve: '🛡' };
+            
+            // For Chapter 1 (Cloned SIM), use animated SVG scenes
+            if (idx === 0) {
+                renderAnimatedStory(ch);
+                return;
+            }
+            
+            const stepsHTML = ch.steps.map(s => `
+                <div class="story-step">
+                    <div class="step-dot ${s.type}">${icons[s.type]}</div>
+                    <div class="step-content">
+                        <div class="step-label ${s.type}">${s.label}</div>
+                        <div class="step-title">${s.title}</div>
+                        <div class="step-desc">${s.desc}</div>
+                        ${s.insight ? `<div class="step-insight"><strong>Vishwas detects:</strong> ${s.insight}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            const prevBtn = idx > 0 ? `<button class="btn secondary" onclick="navigateStory(${idx-1})">← Prev</button>` : '';
+            const nextBtn = idx < chapters.length - 1 ? `<button class="btn primary" onclick="navigateStory(${idx+1})">Next →</button>` : `<button class="btn primary" onclick="closeStory()">Complete ✓</button>`;
+
+            document.getElementById('storyContent').innerHTML = `
+                <div class="story-header">
+                    <div class="chapter-badge">${ch.badge}</div>
+                    <h2 class="story-title">${ch.title}</h2>
+                    <p class="story-sub">${ch.desc}</p>
+                </div>
+                <div class="story-steps-container">${stepsHTML}</div>
+                <div class="story-footer">
+                    <p class="story-note">${ch.note}</p>
+                    <div class="story-nav">${prevBtn}${nextBtn}</div>
+                </div>
+            `;
+        }
+
+        function renderAnimatedStory(ch) {
+            const scenes = getAnimatedScenes();
+            document.getElementById('storyContent').innerHTML = `
+                <div class="story-header" style="background:linear-gradient(180deg,#fffcf7,#f5f0e8)">
+                    <div class="chapter-badge">${ch.badge}</div>
+                    <h2 class="story-title">${ch.title}</h2>
+                    <p class="story-sub">${ch.desc}</p>
+                    <div style="display:flex;gap:6px;justify-content:center;margin-top:12px">
+                        ${ch.tags.map(t => `<span style="font-size:0.7rem;font-weight:600;padding:4px 12px;border-radius:100px;background:rgba(74,63,143,0.08);color:#4a3f8f">${t}</span>`).join('')}
+                    </div>
+                </div>
+                <div class="scene-container" id="sceneContainer">${scenes}</div>
+                <div class="story-footer">
+                    <p class="story-note">${ch.note}</p>
+                    <div class="story-nav">
+                        <button class="btn primary" onclick="navigateStory(1)">Next →</button>
+                    </div>
+                </div>
+            `;
+            
+            // Trigger scene animations on scroll
+            setTimeout(() => {
+                const sceneObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible') });
+                }, {threshold: 0.2, root: document.getElementById('storyModal')});
+                document.querySelectorAll('.scene-step').forEach(el => sceneObserver.observe(el));
+            }, 100);
+        }
+
+        function getAnimatedScenes() {
+            return `
+            <!-- Scene 1: Account Setup -->
+            <div class="scene-step visible">
+                <div class="scene-box">
+                    <svg viewBox="0 0 680 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="680" height="300" fill="#faf8f4"/>
+                        <g style="animation:slideInLeft 0.8s 0.3s both cubic-bezier(0.16,1,0.3,1)">
+                            <rect x="120" y="50" width="80" height="140" rx="14" stroke="#1a1a2e" stroke-width="2" fill="white"/>
+                            <rect x="130" y="64" width="60" height="96" rx="6" fill="#f5f0e8" stroke="#ddd" stroke-width="0.5"/>
+                            <rect x="148" y="54" width="24" height="4" rx="2" fill="#ddd"/>
+                            <circle cx="160" cy="196" r="6" stroke="#1a1a2e" stroke-width="1.5" fill="none"/>
+                            <text x="160" y="90" font-family="sans-serif" font-size="8" fill="#4a3f8f" text-anchor="middle" font-weight="600">TrustBank</text>
+                            <rect x="140" y="100" width="40" height="6" rx="3" fill="#e8e5ff"/>
+                            <rect x="136" y="112" width="48" height="6" rx="3" fill="#e8e5ff" opacity="0.6"/>
+                            <rect x="140" y="130" width="40" height="16" rx="8" fill="#4a3f8f"/>
+                            <text x="160" y="141" font-family="sans-serif" font-size="7" fill="white" text-anchor="middle">Open Acct</text>
+                        </g>
+                        <g style="animation:slideInUp 0.6s 0.8s both cubic-bezier(0.16,1,0.3,1)">
+                            <rect x="280" y="80" width="60" height="80" rx="8" fill="white" stroke="#4a3f8f" stroke-width="2"/>
+                            <rect x="290" y="100" width="40" height="30" rx="4" fill="#e8e5ff" stroke="#4a3f8f" stroke-width="1"/>
+                            <line x1="300" y1="100" x2="300" y2="130" stroke="#4a3f8f" stroke-width="0.8"/>
+                            <line x1="310" y1="100" x2="310" y2="130" stroke="#4a3f8f" stroke-width="0.8"/>
+                            <line x1="320" y1="100" x2="320" y2="130" stroke="#4a3f8f" stroke-width="0.8"/>
+                            <line x1="290" y1="115" x2="330" y2="115" stroke="#4a3f8f" stroke-width="0.8"/>
+                            <text x="310" y="148" font-family="monospace" font-size="9" fill="#4a3f8f" text-anchor="middle" font-weight="500">SIM Card</text>
+                        </g>
+                        <g style="animation:fadeIn 0.4s 1.3s both">
+                            <line x1="345" y1="120" x2="390" y2="120" stroke="#4a3f8f" stroke-width="1.5" stroke-dasharray="4 3"/>
+                            <polygon points="390,116 398,120 390,124" fill="#4a3f8f"/>
+                        </g>
+                        <g style="animation:lockSnap 0.5s 1.5s both cubic-bezier(0.16,1,0.3,1)">
+                            <rect x="405" y="80" width="130" height="80" rx="12" fill="#d4efe3" stroke="#2d7a5f" stroke-width="1.5"/>
+                            <text x="470" y="108" font-family="monospace" font-size="10" fill="#2d7a5f" text-anchor="middle" font-weight="500">IMSI: A7X-903</text>
+                            <rect x="453" y="120" width="34" height="24" rx="4" fill="#2d7a5f"/>
+                            <path d="M460 120v-8a10 10 0 0120 0v8" stroke="#2d7a5f" stroke-width="2.5" fill="none"/>
+                            <circle cx="470" cy="132" r="3" fill="#d4efe3"/>
+                            <text x="470" y="155" font-family="monospace" font-size="7" fill="#2d7a5f" text-anchor="middle">LOCKED ✓</text>
+                        </g>
+                        <circle cx="470" cy="120" r="0" fill="none" stroke="#2d7a5f" stroke-width="1" opacity="0">
+                            <animate attributeName="r" values="0;50" dur="0.8s" begin="2s" fill="freeze"/>
+                            <animate attributeName="opacity" values="0.4;0" dur="0.8s" begin="2s" fill="freeze"/>
+                        </circle>
+                        <text x="340" y="240" font-family="sans-serif" font-size="11" fill="#888" text-anchor="middle">Vishwas silently captures the unique SIM identity</text>
+                        <text x="340" y="258" font-family="sans-serif" font-size="11" fill="#888" text-anchor="middle">as the trusted baseline on first login</text>
+                    </svg>
+                </div>
+                <div class="scene-caption">
+                    <div class="scene-dot normal">✓</div>
+                    <div><div class="scene-label normal">Account Setup</div><div class="scene-title">Customer opens TrustBank</div></div>
+                </div>
+            </div>
+
+            <!-- Scene 2: Normal Usage -->
+            <div class="scene-step">
+                <div class="scene-box">
+                    <svg viewBox="0 0 680 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="680" height="260" fill="#faf8f4"/>
+                        <g style="animation:slideInLeft 0.6s 0.2s both">
+                            <rect x="60" y="60" width="60" height="100" rx="10" stroke="#1a1a2e" stroke-width="1.5" fill="white"/>
+                            <rect x="68" y="72" width="44" height="64" rx="4" fill="#f0f8ff"/>
+                            <text x="90" y="90" font-family="monospace" font-size="7" fill="#2c5f8a" text-anchor="middle">Login</text>
+                            <text x="90" y="126" font-family="monospace" font-size="6" fill="#888" text-anchor="middle">Day 1</text>
+                        </g>
+                        <g style="animation:fadeIn 0.3s 0.5s both">
+                            <line x1="130" y1="110" x2="158" y2="110" stroke="#2d7a5f" stroke-width="1" stroke-dasharray="3 2"/>
+                            <polygon points="158,107 164,110 158,113" fill="#2d7a5f"/>
+                        </g>
+                        <g style="animation:popIn 0.4s 0.7s both cubic-bezier(0.16,1,0.3,1)">
+                            <circle cx="186" cy="110" r="18" fill="#d4efe3" stroke="#2d7a5f" stroke-width="1.5"/>
+                            <path d="M178 110l5 5 10-10" stroke="#2d7a5f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </g>
+                        <g style="animation:slideInLeft 0.6s 0.6s both">
+                            <rect x="230" y="60" width="60" height="100" rx="10" stroke="#1a1a2e" stroke-width="1.5" fill="white"/>
+                            <rect x="238" y="72" width="44" height="64" rx="4" fill="#f0f8ff"/>
+                            <text x="260" y="90" font-family="monospace" font-size="7" fill="#2c5f8a" text-anchor="middle">Login</text>
+                            <text x="260" y="126" font-family="monospace" font-size="6" fill="#888" text-anchor="middle">Day 30</text>
+                        </g>
+                        <g style="animation:fadeIn 0.3s 0.9s both">
+                            <line x1="300" y1="110" x2="328" y2="110" stroke="#2d7a5f" stroke-width="1" stroke-dasharray="3 2"/>
+                            <polygon points="328,107 334,110 328,113" fill="#2d7a5f"/>
+                        </g>
+                        <g style="animation:popIn 0.4s 1.1s both cubic-bezier(0.16,1,0.3,1)">
+                            <circle cx="356" cy="110" r="18" fill="#d4efe3" stroke="#2d7a5f" stroke-width="1.5"/>
+                            <path d="M348 110l5 5 10-10" stroke="#2d7a5f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </g>
+                        <g style="animation:slideInLeft 0.6s 1s both">
+                            <rect x="400" y="60" width="60" height="100" rx="10" stroke="#1a1a2e" stroke-width="1.5" fill="white"/>
+                            <rect x="408" y="72" width="44" height="64" rx="4" fill="#f0f8ff"/>
+                            <text x="430" y="90" font-family="monospace" font-size="7" fill="#2c5f8a" text-anchor="middle">Login</text>
+                            <text x="430" y="126" font-family="monospace" font-size="6" fill="#888" text-anchor="middle">Day 90</text>
+                        </g>
+                        <g style="animation:fadeIn 0.3s 1.3s both">
+                            <line x1="470" y1="110" x2="498" y2="110" stroke="#2d7a5f" stroke-width="1" stroke-dasharray="3 2"/>
+                            <polygon points="498,107 504,110 498,113" fill="#2d7a5f"/>
+                        </g>
+                        <g style="animation:popIn 0.4s 1.5s both cubic-bezier(0.16,1,0.3,1)">
+                            <circle cx="526" cy="110" r="18" fill="#d4efe3" stroke="#2d7a5f" stroke-width="1.5"/>
+                            <path d="M518 110l5 5 10-10" stroke="#2d7a5f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </g>
+                        <g style="animation:fadeIn 0.5s 1.8s both">
+                            <rect x="560" y="90" width="90" height="40" rx="8" fill="#d4efe3" stroke="#2d7a5f" stroke-width="1"/>
+                            <text x="605" y="107" font-family="monospace" font-size="7" fill="#2d7a5f" text-anchor="middle">IMSI: A7X ✓</text>
+                            <text x="605" y="120" font-family="monospace" font-size="7" fill="#2d7a5f" text-anchor="middle">Device: ✓</text>
+                        </g>
+                        <text x="340" y="210" font-family="sans-serif" font-size="11" fill="#888" text-anchor="middle">Every login quietly verifies SIM + device match</text>
+                        <text x="340" y="228" font-family="sans-serif" font-size="11" fill="#2d7a5f" text-anchor="middle" font-weight="500">All clear. All the time.</text>
+                    </svg>
+                </div>
+                <div class="scene-caption">
+                    <div class="scene-dot normal">✓</div>
+                    <div><div class="scene-label normal">Normal Usage</div><div class="scene-title">Months of clean logins</div></div>
+                </div>
+            </div>
+
+            <!-- Scene 3: Social Engineering -->
+            <div class="scene-step">
+                <div class="scene-box">
+                    <svg viewBox="0 0 680 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="680" height="300" fill="#fdf6f5"/>
+                        <g style="animation:slideInLeft 0.6s 0.3s both">
+                            <circle cx="180" cy="90" r="28" fill="#f5f0e8" stroke="#1a1a2e" stroke-width="1.5"/>
+                            <circle cx="172" cy="84" r="3" fill="#1a1a2e"/>
+                            <circle cx="188" cy="84" r="3" fill="#1a1a2e"/>
+                            <path d="M174 96 Q180 102 186 96" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                            <text x="180" y="134" font-family="sans-serif" font-size="10" fill="#1a1a2e" text-anchor="middle" font-weight="500">Rahul</text>
+                            <rect x="210" y="72" width="16" height="28" rx="4" fill="white" stroke="#1a1a2e" stroke-width="1"/>
+                        </g>
+                        <g style="animation:slideInRight 0.5s 0.9s both">
+                            <rect x="260" y="50" width="100" height="28" rx="14" fill="white" stroke="#ddd" stroke-width="1"/>
+                            <text x="310" y="68" font-family="monospace" font-size="8" fill="#888" text-anchor="middle">Date of birth...</text>
+                        </g>
+                        <g style="animation:slideInRight 0.5s 1.2s both">
+                            <rect x="260" y="88" width="110" height="28" rx="14" fill="white" stroke="#ddd" stroke-width="1"/>
+                            <text x="315" y="106" font-family="monospace" font-size="8" fill="#888" text-anchor="middle">Mother's name...</text>
+                        </g>
+                        <g style="animation:slideInRight 0.5s 1.5s both">
+                            <rect x="260" y="126" width="100" height="28" rx="14" fill="white" stroke="#ddd" stroke-width="1"/>
+                            <text x="310" y="144" font-family="monospace" font-size="8" fill="#888" text-anchor="middle">Phone number...</text>
+                        </g>
+                        <g style="animation:fadeIn 0.8s 0.6s both">
+                            <circle cx="490" cy="90" r="28" fill="#fce4e0" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4 3"/>
+                            <circle cx="482" cy="84" r="3" fill="#c0392b"/>
+                            <circle cx="498" cy="84" r="3" fill="#c0392b"/>
+                            <path d="M484 98 Q490 92 496 98" stroke="#c0392b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                            <text x="490" y="134" font-family="sans-serif" font-size="10" fill="#c0392b" text-anchor="middle" font-weight="500">Fraudster</text>
+                            <rect x="514" y="72" width="60" height="22" rx="4" fill="#fce4e0" stroke="#c0392b" stroke-width="1"/>
+                            <text x="544" y="86" font-family="monospace" font-size="7" fill="#c0392b" text-anchor="middle">"Bank Support"</text>
+                        </g>
+                        <circle cx="375" cy="70" r="4" fill="#c0392b" opacity="0">
+                            <animate attributeName="cx" values="360;460" dur="1.5s" begin="1.8s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values="0;0.8;0" dur="1.5s" begin="1.8s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="375" cy="100" r="4" fill="#c0392b" opacity="0">
+                            <animate attributeName="cx" values="360;460" dur="1.5s" begin="2.1s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values="0;0.8;0" dur="1.5s" begin="2.1s" repeatCount="indefinite"/>
+                        </circle>
+                        <circle cx="375" cy="130" r="4" fill="#c0392b" opacity="0">
+                            <animate attributeName="cx" values="360;460" dur="1.5s" begin="2.4s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values="0;0.8;0" dur="1.5s" begin="2.4s" repeatCount="indefinite"/>
+                        </circle>
+                        <g style="animation:fadeIn 0.6s 2s both">
+                            <rect x="220" y="190" width="240" height="40" rx="10" fill="#fce4e0" stroke="#c0392b" stroke-width="1"/>
+                            <text x="340" y="206" font-family="sans-serif" font-size="10" fill="#c0392b" text-anchor="middle" font-weight="500">⚠ Social engineering in progress</text>
+                            <text x="340" y="222" font-family="sans-serif" font-size="9" fill="#c0392b" text-anchor="middle">Personal details being extracted</text>
+                        </g>
+                        <text x="340" y="268" font-family="sans-serif" font-size="11" fill="#888" text-anchor="middle">Fraudster poses as bank agent, harvests identity info</text>
+                    </svg>
+                </div>
+                <div class="scene-caption">
+                    <div class="scene-dot threat">⚠</div>
+                    <div><div class="scene-label threat">Threat Begins</div><div class="scene-title">Fraudster socially engineers him</div></div>
+                </div>
+            </div>
+
+            <!-- Scene 4: SIM Cloned -->
+            <div class="scene-step">
+                <div class="scene-box">
+                    <svg viewBox="0 0 680 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="680" height="280" fill="#fdf6f5"/>
+                        <g style="animation:slideInLeft 0.6s 0.3s both">
+                            <rect x="140" y="60" width="70" height="90" rx="8" fill="white" stroke="#4a3f8f" stroke-width="2"/>
+                            <rect x="152" y="80" width="46" height="34" rx="4" fill="#e8e5ff" stroke="#4a3f8f" stroke-width="1"/>
+                            <line x1="165" y1="80" x2="165" y2="114" stroke="#4a3f8f" stroke-width="0.8"/>
+                            <line x1="178" y1="80" x2="178" y2="114" stroke="#4a3f8f" stroke-width="0.8"/>
+                            <line x1="152" y1="97" x2="198" y2="97" stroke="#4a3f8f" stroke-width="0.8"/>
+                            <text x="175" y="134" font-family="monospace" font-size="10" fill="#4a3f8f" text-anchor="middle" font-weight="500">IMSI: A7X</text>
+                            <text x="175" y="170" font-family="sans-serif" font-size="9" fill="#666" text-anchor="middle">Original</text>
+                        </g>
+                        <g style="animation:fadeIn 0.5s 1s both">
+                            <path d="M225 105 Q310 40, 395 105" stroke="#c0392b" stroke-width="2" fill="none" stroke-dasharray="6 4"/>
+                            <polygon points="393,100 400,105 393,110" fill="#c0392b"/>
+                            <text x="310" y="55" font-family="monospace" font-size="11" fill="#c0392b" text-anchor="middle" font-weight="500">⚡ CLONE</text>
+                        </g>
+                        <g style="animation:shakeX 0.5s 1.3s both">
+                            <rect x="410" y="60" width="70" height="90" rx="8" fill="#fce4e0" stroke="#c0392b" stroke-width="2"/>
+                            <rect x="422" y="80" width="46" height="34" rx="4" fill="#fce4e0" stroke="#c0392b" stroke-width="1"/>
+                            <line x1="435" y1="80" x2="435" y2="114" stroke="#c0392b" stroke-width="0.8"/>
+                            <line x1="448" y1="80" x2="448" y2="114" stroke="#c0392b" stroke-width="0.8"/>
+                            <line x1="422" y1="97" x2="468" y2="97" stroke="#c0392b" stroke-width="0.8"/>
+                            <text x="445" y="134" font-family="monospace" font-size="10" fill="#c0392b" text-anchor="middle" font-weight="500">IMSI: F3K</text>
+                            <text x="445" y="170" font-family="sans-serif" font-size="9" fill="#c0392b" text-anchor="middle">Cloned ✗</text>
+                        </g>
+                        <g style="animation:popIn 0.4s 1.6s both">
+                            <circle cx="310" cy="110" r="22" fill="white" stroke="#c0392b" stroke-width="1.5"/>
+                            <text x="310" y="116" font-family="serif" font-size="18" fill="#c0392b" text-anchor="middle">≠</text>
+                        </g>
+                        <g style="animation:fadeIn 0.5s 1.8s both">
+                            <rect x="220" y="195" width="240" height="36" rx="8" fill="white" stroke="#c0392b" stroke-width="1" stroke-dasharray="4 3"/>
+                            <text x="340" y="210" font-family="monospace" font-size="9" fill="#c0392b" text-anchor="middle">Same phone number — different IMSI</text>
+                            <text x="340" y="224" font-family="sans-serif" font-size="8" fill="#888" text-anchor="middle">Rahul is completely unaware</text>
+                        </g>
+                        <text x="340" y="262" font-family="sans-serif" font-size="11" fill="#888" text-anchor="middle">The SIM is cloned. The trap is set.</text>
+                    </svg>
+                </div>
+                <div class="scene-caption">
+                    <div class="scene-dot threat">⚠</div>
+                    <div><div class="scene-label threat">SIM Cloned</div><div class="scene-title">New card — same number, different IMSI</div></div>
+                </div>
+            </div>
+
+            <!-- Scene 5: Detection -->
+            <div class="scene-step">
+                <div class="scene-box">
+                    <svg viewBox="0 0 680 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="680" height="320" fill="#fffbf0"/>
+                        <g style="animation:slideInLeft 0.6s 0.3s both">
+                            <rect x="80" y="60" width="70" height="110" rx="12" fill="#fce4e0" stroke="#c0392b" stroke-width="1.5"/>
+                            <rect x="88" y="74" width="54" height="72" rx="4" fill="white"/>
+                            <text x="115" y="100" font-family="monospace" font-size="7" fill="#c0392b" text-anchor="middle">Login...</text>
+                            <text x="115" y="115" font-family="monospace" font-size="6" fill="#888" text-anchor="middle">user: rahul</text>
+                            <text x="115" y="128" font-family="monospace" font-size="6" fill="#888" text-anchor="middle">pass: ****</text>
+                            <text x="115" y="192" font-family="sans-serif" font-size="8" fill="#c0392b" text-anchor="middle">Fraudster's phone</text>
+                        </g>
+                        <g style="animation:fadeIn 0.3s 0.8s both">
+                            <line x1="160" y1="115" x2="220" y2="115" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="4 3"/>
+                            <polygon points="220,111 228,115 220,119" fill="#1a1a2e"/>
+                        </g>
+                        <g style="animation:slideInUp 0.6s 1s both">
+                            <rect x="240" y="40" width="200" height="200" rx="16" fill="white" stroke="#d4870e" stroke-width="2"/>
+                            <text x="340" y="66" font-family="monospace" font-size="9" fill="#d4870e" text-anchor="middle" font-weight="500">VISHWAS GATEWAY</text>
+                            <line x1="260" y1="75" x2="420" y2="75" stroke="#d4870e" stroke-width="0.5"/>
+                            <g style="animation:slideInRight 0.4s 1.4s both">
+                                <rect x="260" y="88" width="160" height="36" rx="8" fill="#fce4e0"/>
+                                <text x="280" y="110" font-family="monospace" font-size="8" fill="#c0392b">IMSI check</text>
+                                <text x="400" y="110" font-family="monospace" font-size="9" fill="#c0392b" text-anchor="end" font-weight="600">✗ FAIL</text>
+                            </g>
+                            <g style="animation:slideInRight 0.4s 1.7s both">
+                                <rect x="260" y="132" width="160" height="36" rx="8" fill="#fce4e0"/>
+                                <text x="280" y="154" font-family="monospace" font-size="8" fill="#c0392b">Device check</text>
+                                <text x="400" y="154" font-family="monospace" font-size="9" fill="#c0392b" text-anchor="end" font-weight="600">✗ FAIL</text>
+                            </g>
+                            <g style="animation:popIn 0.5s 2.1s both cubic-bezier(0.16,1,0.3,1)">
+                                <rect x="275" y="180" width="130" height="40" rx="20" fill="#c0392b"/>
+                                <text x="340" y="204" font-family="sans-serif" font-size="11" fill="white" text-anchor="middle" font-weight="600">⛔ BLOCKED</text>
+                            </g>
+                        </g>
+                        <circle cx="340" cy="140" r="18" fill="none" stroke="#c0392b" stroke-width="1" opacity="0">
+                            <animate attributeName="r" values="18;80" dur="2s" begin="2.2s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values="0.5;0" dur="2s" begin="2.2s" repeatCount="indefinite"/>
+                        </circle>
+                        <g style="animation:fadeIn 0.5s 2.5s both">
+                            <rect x="480" y="95" width="140" height="50" rx="10" fill="#fdf0d5" stroke="#d4870e" stroke-width="1"/>
+                            <text x="550" y="116" font-family="monospace" font-size="8" fill="#d4870e" text-anchor="middle" font-weight="500">No OTP sent</text>
+                            <text x="550" y="133" font-family="sans-serif" font-size="8" fill="#d4870e" text-anchor="middle">Access denied</text>
+                        </g>
+                        <text x="340" y="280" font-family="sans-serif" font-size="11" fill="#888" text-anchor="middle">Two flags raised. Instant block. No human intervention needed.</text>
+                    </svg>
+                </div>
+                <div class="scene-caption">
+                    <div class="scene-dot detect">🔍</div>
+                    <div><div class="scene-label detect">Detection</div><div class="scene-title">Login attempt blocked instantly</div></div>
+                </div>
+                <div class="scene-insight"><strong>Vishwas detects:</strong> IMSI mismatch + unrecognized device. No OTP sent. Access denied automatically.</div>
+            </div>
+
+            <!-- Scene 6: Resolved -->
+            <div class="scene-step">
+                <div class="scene-box">
+                    <svg viewBox="0 0 680 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="680" height="300" fill="#f4faf6"/>
+                        <g style="animation:ghostFade 1.5s 1.5s both">
+                            <circle cx="140" cy="110" r="28" fill="#fce4e0" stroke="#c0392b" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+                            <text x="140" y="114" font-family="sans-serif" font-size="18" text-anchor="middle">👤</text>
+                            <text x="140" y="152" font-family="sans-serif" font-size="9" fill="#c0392b" text-anchor="middle" opacity="0.5">Fraudster</text>
+                        </g>
+                        <g style="animation:doorSlam 0.4s 0.8s both cubic-bezier(0.16,1,0.3,1)" transform-origin="230 30">
+                            <rect x="230" y="30" width="12" height="220" rx="6" fill="#c0392b" opacity="0.15"/>
+                            <rect x="232" y="30" width="8" height="220" rx="4" fill="#c0392b" opacity="0.3"/>
+                        </g>
+                        <g style="animation:popIn 0.6s 1s both cubic-bezier(0.16,1,0.3,1)">
+                            <path d="M400 60 L340 82 L340 150 C340 190 400 210 400 210 C400 210 460 190 460 150 L460 82 Z" fill="#d4efe3" stroke="#2d7a5f" stroke-width="2.5"/>
+                            <path d="M380 135l12 12 25-25" stroke="#2d7a5f" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="62" stroke-dashoffset="62">
+                                <animate attributeName="stroke-dashoffset" from="62" to="0" dur="0.6s" begin="1.4s" fill="freeze"/>
+                            </path>
+                            <text x="400" y="105" font-family="monospace" font-size="8" fill="#2d7a5f" text-anchor="middle" font-weight="500">ACCOUNT</text>
+                            <text x="400" y="118" font-family="monospace" font-size="8" fill="#2d7a5f" text-anchor="middle" font-weight="500">SAFE</text>
+                        </g>
+                        <g style="animation:slideInRight 0.6s 1.8s both">
+                            <circle cx="560" cy="100" r="28" fill="#f5f0e8" stroke="#1a1a2e" stroke-width="1.5"/>
+                            <circle cx="552" cy="94" r="3" fill="#1a1a2e"/>
+                            <circle cx="568" cy="94" r="3" fill="#1a1a2e"/>
+                            <path d="M554 106 Q560 112 566 106" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                            <text x="560" y="142" font-family="sans-serif" font-size="10" fill="#1a1a2e" text-anchor="middle" font-weight="500">Rahul</text>
+                        </g>
+                        <g style="animation:bellRing 0.8s 2.2s both" transform-origin="590 72">
+                            <circle cx="590" cy="72" r="16" fill="#fdf0d5" stroke="#d4870e" stroke-width="1.5"/>
+                            <path d="M585 75V69a5 5 0 0110 0v6" stroke="#d4870e" stroke-width="1.5" fill="none"/>
+                            <circle cx="590" cy="78" r="2" fill="#d4870e"/>
+                            <line x1="590" y1="63" x2="590" y2="60" stroke="#d4870e" stroke-width="1.5" stroke-linecap="round"/>
+                        </g>
+                        <g style="animation:slideInRight 0.5s 2.5s both">
+                            <rect x="495" y="160" width="130" height="50" rx="10" fill="white" stroke="#2d7a5f" stroke-width="1.5"/>
+                            <text x="560" y="180" font-family="sans-serif" font-size="8" fill="#2d7a5f" text-anchor="middle" font-weight="500">🔔 Security Alert</text>
+                            <text x="560" y="196" font-family="sans-serif" font-size="7" fill="#666" text-anchor="middle">Please re-verify your</text>
+                            <text x="560" y="206" font-family="sans-serif" font-size="7" fill="#666" text-anchor="middle">account identity</text>
+                        </g>
+                        <circle cx="400" cy="140" fill="none" stroke="#2d7a5f" stroke-width="1">
+                            <animate attributeName="r" values="60;120" dur="2s" begin="1.5s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values="0.3;0" dur="2s" begin="1.5s" repeatCount="indefinite"/>
+                        </circle>
+                        <text x="340" y="262" font-family="sans-serif" font-size="11" fill="#2d7a5f" text-anchor="middle" font-weight="500">Account never compromised. Fraudster eliminated.</text>
+                    </svg>
+                </div>
+                <div class="scene-caption">
+                    <div class="scene-dot resolve">🛡</div>
+                    <div><div class="scene-label resolve">Resolved</div><div class="scene-title">Account safe. Customer alerted.</div></div>
+                </div>
+            </div>
+            `;
+        }
+
+        document.getElementById('storyOverlay').addEventListener('click', e => { if (e.target.id === 'storyOverlay') closeStory(); });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeStory();
+            if (document.getElementById('storyOverlay').classList.contains('active')) {
+                if (e.key === 'ArrowRight' && currentChapter < chapters.length - 1) navigateStory(currentChapter + 1);
+                if (e.key === 'ArrowLeft' && currentChapter > 0) navigateStory(currentChapter - 1);
+            }
+        });
+
+        buildChaptersGrid();
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // CUSTOMER JOURNEY — SCENARIOS
+        // ══════════════════════════════════════════════════════════════════════════
+        const scenarios = [
+            { id: 'onboarding', icon: '🆕', title: 'New Customer Onboarding', mode: 'device', story: 'New user downloads the app. Device registered, keys generated, account bound.', steps: ['Register', 'Start Auth', 'Sign', 'Verify'] },
+            { id: 'login', icon: '🔐', title: 'Daily App Login', mode: 'device', story: 'Returning user opens app. Quick device verification.', steps: ['Start Auth', 'Sign', 'Verify'] },
+            { id: 'transfer', icon: '💸', title: 'High-Value Transfer', mode: 'hybrid', story: 'Large transaction triggers hybrid mode with device + SIM.', steps: ['Start Hybrid', 'Device', 'SIM', 'Complete'] },
+            { id: 'sim', icon: '📱', title: 'SIM Swap Detection', mode: 'sim', story: 'Silent SIM verification runs to confirm identity.', steps: ['Start SIM', 'Verify IMSI', 'Poll', 'Confirm'] }
+        ];
+        let activeScenario = 'onboarding';
+
+        function buildScenarioTabs() {
+            const tabs = document.getElementById('scenarioTabs');
+            tabs.innerHTML = scenarios.map(sc => `
+                <button class="sc-tab ${sc.id === activeScenario ? 'active' : ''}" data-sc="${sc.id}">${sc.icon} ${sc.title}</button>
+            `).join('');
+            tabs.querySelectorAll('.sc-tab').forEach(tab => {
+                tab.addEventListener('click', () => loadScenario(tab.dataset.sc));
+            });
+        }
+
+        function loadScenario(id) {
+            activeScenario = id;
+            const sc = scenarios.find(s => s.id === id);
+            document.querySelectorAll('.sc-tab').forEach(t => t.classList.toggle('active', t.dataset.sc === id));
+            document.getElementById('scenarioCard').innerHTML = `
+                <div class="sc-header">
+                    <span class="sc-icon">${sc.icon}</span>
+                    <span class="sc-title">${sc.title}</span>
+                    <span class="sc-mode ${sc.mode}">${sc.mode}</span>
+                </div>
+                <p class="sc-story">${sc.story}</p>
+                <div class="sc-flow">${sc.steps.map((s, i) => `<span class="sc-step">${s}</span>${i < sc.steps.length - 1 ? '<span class="sc-arrow">→</span>' : ''}`).join('')}</div>
+                <div class="form-grid">
+                    <label>Client ID <input type="text" value="client_123"></label>
+                    <label>User Reference <input type="text" value="user_001"></label>
+                    <label>Platform <input type="text" value="android"></label>
+                    <label>Device Model <input type="text" value="Pixel 7"></label>
+                    ${sc.mode !== 'device' ? '<label>MSISDN <input type="text" value="917905968734"></label>' : ''}
+                </div>
+                <button class="btn primary" style="width:100%" onclick="runScenario('${sc.id}')">▶ Run ${sc.title}</button>
+            `;
+        }
+
+        window.runScenario = function(id) {
+            const btn = document.querySelector('#scenarioCard .btn.primary');
+            btn.disabled = true;
+            btn.textContent = '⏳ Running...';
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.textContent = '✓ Completed — All steps passed';
+                btn.style.background = 'var(--success)';
+                setTimeout(() => {
+                    btn.textContent = `▶ Run ${scenarios.find(s => s.id === id).title}`;
+                    btn.style.background = '';
+                }, 2000);
+            }, 1500);
+        };
+
+        buildScenarioTabs();
+        loadScenario('onboarding');
+
+        // ══════════════════════════════════════════════════════════════════════════
+        // CONFIG SLIDERS
+        // ══════════════════════════════════════════════════════════════════════════
+        const sliderPairs = [
+            ['t-allow', 't-allow-val'], ['t-review', 't-review-val'], ['t-deny', 't-deny-val'],
+            ['w-device', 'w-device-val'], ['w-sim', 'w-sim-val'], ['w-ip', 'w-ip-val'], ['w-behaviour', 'w-behaviour-val']
+        ];
+        sliderPairs.forEach(([sliderId, valId]) => {
+            const slider = document.getElementById(sliderId);
+            const val = document.getElementById(valId);
+            if (slider && val) {
+                slider.addEventListener('input', () => {
+                    val.textContent = slider.value;
+                    updateThresholdBar();
+                });
+            }
+        });
+
+        function updateThresholdBar() {
+            const deny = parseInt(document.getElementById('t-deny')?.value || 20);
+            const review = parseInt(document.getElementById('t-review')?.value || 40);
+            const denyBar = document.getElementById('tbar-deny');
+            const reviewBar = document.getElementById('tbar-review');
+            if (denyBar) denyBar.style.width = `${deny}%`;
+            if (reviewBar) reviewBar.style.width = `${Math.max(0, review - deny)}%`;
+        }
+        updateThresholdBar();
+    });
+    </script>
+</body>
+</html>

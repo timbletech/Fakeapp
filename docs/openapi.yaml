@@ -1,0 +1,399 @@
+openapi: 3.0.3
+info:
+  title: Timble Authentication API
+  version: 1.0.0
+  description: >
+    Unified authentication API supporting device-only, SIM-only (XConnect),
+    and hybrid (SIM + device cryptography) flows.
+servers:
+  - url: http://localhost:8080
+paths:
+  /v1/device/register:
+    post:
+      summary: Register or replace an active device binding for a client user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeviceRequest'
+      responses:
+        '200':
+          description: Device registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterDeviceResponse'
+  /v1/auth/start:
+    post:
+      summary: Start authentication in device, sim, or hybrid mode
+      description: >
+        Mode is resolved by request `mode` + client policy (`DEFAULT_AUTH_MODE`,
+        `CLIENT_AUTH_MODES`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartAuthRequest'
+      responses:
+        '200':
+          description: Session started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartAuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream SIM provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/complete:
+    post:
+      summary: Complete authentication for started session
+      description: >
+        Device mode verifies challenge signature. SIM mode polls SIM decision.
+        Hybrid mode requires SIM allow + valid device signature.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteAuthRequest'
+      responses:
+        '200':
+          description: Final ALLOW/DENY decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteAuthResponse'
+        '202':
+          description: SIM still pending, retry completion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteAuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream SIM provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/auth/verify:
+    post:
+      summary: Verify auth context token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTokenRequest'
+      responses:
+        '200':
+          description: Token verification response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyTokenResponse'
+  /v1/hybrid/start:
+    post:
+      summary: Alias route for hybrid start
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartAuthRequest'
+      responses:
+        '200':
+          description: Hybrid session started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartAuthResponse'
+  /v1/hybrid/complete:
+    post:
+      summary: Alias route for hybrid complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteAuthRequest'
+      responses:
+        '200':
+          description: Hybrid ALLOW/DENY
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteAuthResponse'
+        '202':
+          description: SIM pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteAuthResponse'
+  /v1/sim/start:
+    post:
+      summary: Direct SIM API (legacy/internal)
+      parameters:
+        - in: header
+          name: X-API-Key
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimStartRequest'
+      responses:
+        '200':
+          description: SIM session initialized
+  /v1/sim/complete:
+    post:
+      summary: Direct SIM complete API (legacy/internal)
+      parameters:
+        - in: header
+          name: X-API-Key
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimCompleteRequest'
+      responses:
+        '200':
+          description: SIM final decision
+        '202':
+          description: SIM pending
+
+components:
+  schemas:
+    DeviceInfo:
+      type: object
+      properties:
+        device_id:
+          type: string
+        platform:
+          type: string
+        app_version:
+          type: string
+        device_model:
+          type: string
+        os_version:
+          type: string
+        ip_address:
+          type: string
+    RegisterDeviceRequest:
+      type: object
+      required: [client_id, user_ref, public_key, device_info]
+      properties:
+        client_id:
+          type: string
+        user_ref:
+          type: string
+        public_key:
+          type: string
+        device_info:
+          $ref: '#/components/schemas/DeviceInfo'
+    RegisterDeviceResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+        client_id:
+          type: string
+        device_binding_id:
+          type: string
+        status:
+          type: string
+    StartAuthRequest:
+      type: object
+      required: [client_id, user_ref]
+      properties:
+        client_id:
+          type: string
+        user_ref:
+          type: string
+        action:
+          type: string
+        mode:
+          type: string
+          enum: [device, sim, hybrid]
+        msisdn:
+          type: string
+          description: Required for sim and hybrid.
+        device_binding_id:
+          type: string
+          description: Required for device and hybrid.
+        device_info:
+          $ref: '#/components/schemas/DeviceInfo'
+    DeviceChallenge:
+      type: object
+      properties:
+        challenge_id:
+          type: string
+        challenge:
+          type: string
+        expires_in_seconds:
+          type: integer
+    SimChallenge:
+      type: object
+      properties:
+        auth_session_id:
+          type: string
+        session_uri:
+          type: string
+        expires_in_seconds:
+          type: integer
+        instructions:
+          type: string
+    StartAuthResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+        client_id:
+          type: string
+        mode:
+          type: string
+        auth_session_id:
+          type: string
+        next_step:
+          type: string
+        device:
+          $ref: '#/components/schemas/DeviceChallenge'
+        sim:
+          $ref: '#/components/schemas/SimChallenge'
+        status:
+          type: string
+    CompleteAuthRequest:
+      type: object
+      required: [auth_session_id]
+      properties:
+        client_id:
+          type: string
+        mode:
+          type: string
+          enum: [device, sim, hybrid]
+          description: Optional but recommended. Must match the session mode.
+        auth_session_id:
+          type: string
+        challenge_id:
+          type: string
+        device_signature:
+          type: string
+    SimDecision:
+      type: object
+      properties:
+        decision:
+          type: string
+        reason_code:
+          type: string
+        reason_message:
+          type: string
+        status:
+          type: string
+    CompleteAuthResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+        client_id:
+          type: string
+        mode:
+          type: string
+        auth_session_id:
+          type: string
+        decision:
+          type: string
+        reason_code:
+          type: string
+        reason_message:
+          type: string
+        next_step:
+          type: string
+        attempts_remaining:
+          type: integer
+        sim:
+          $ref: '#/components/schemas/SimDecision'
+        auth_context_token:
+          type: string
+        expires_in_seconds:
+          type: integer
+        status:
+          type: string
+    VerifyTokenRequest:
+      type: object
+      required: [client_id, auth_context_token]
+      properties:
+        client_id:
+          type: string
+        auth_context_token:
+          type: string
+    VerifyTokenResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+        client_id:
+          type: string
+        valid:
+          type: boolean
+        expires_in_seconds:
+          type: integer
+        status:
+          type: string
+    SimStartRequest:
+      type: object
+      required: [client_id, user_ref, msisdn]
+      properties:
+        client_id:
+          type: string
+        user_ref:
+          type: string
+        msisdn:
+          type: string
+        action:
+          type: string
+    SimCompleteRequest:
+      type: object
+      required: [auth_session_id]
+      properties:
+        auth_session_id:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        request_id:
+          type: string
