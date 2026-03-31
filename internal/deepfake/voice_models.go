@@ -1,6 +1,6 @@
 package deepfake
 
-// VoiceAnalyzeRequest is the payload sent to the voice analysis service.
+// VoiceAnalyzeRequest is the payload sent to the Go handler (converted from base64).
 type VoiceAnalyzeRequest struct {
 	Data   string   `json:"data"`
 	Layers []string `json:"layers,omitempty"`
@@ -15,22 +15,33 @@ type VoiceSubmitResponse struct {
 	PollURL         string   `json:"poll_url"`
 }
 
-// VoiceResultResponse is returned when a task is complete (200) or pending (202 on poll).
+// VoiceResultResponse is the VARE API response from the voice analysis service.
+// This matches the VARE (Voice Authenticity Risk Engine) API response schema.
 type VoiceResultResponse struct {
-	Status          string              `json:"status"`
-	ExecutionMode   string              `json:"execution_mode"`
-	TaskID          string              `json:"task_id,omitempty"`
-	TaskState       string              `json:"task_state,omitempty"`
-	RequestedLayers []string            `json:"requested_layers,omitempty"`
-	Layers          *VoiceLayers        `json:"layers,omitempty"`
-	Summary         *VoiceSummary       `json:"summary,omitempty"`
-	Timings         *VoiceTimings       `json:"timings,omitempty"`
-	RuntimeConfig   *VoiceRuntimeConfig `json:"runtime_config,omitempty"`
-	// Error fields (returned by voice service on 400/500)
-	Code            string   `json:"code,omitempty"`
-	Message         string   `json:"message,omitempty"`
-	SupportedLayers []string `json:"supported_layers,omitempty"`
+	Status          string                `json:"status"`
+	Filename        string                `json:"filename,omitempty"`
+	DurationSec     float64               `json:"duration_sec,omitempty"`
+	NSegments       int                   `json:"n_segments,omitempty"`
+	EnsembleScore   float64               `json:"ensemble_score,omitempty"`
+	RiskLevel       string                `json:"risk_level,omitempty"`
+	RiskColor       string                `json:"risk_color,omitempty"`
+	ModelConfidence float64               `json:"model_confidence,omitempty"`
+	Models          map[string]VoiceModel `json:"models,omitempty"`
+	Code            string                `json:"code,omitempty"`
+	Message         string                `json:"message,omitempty"`
 }
+
+// VoiceModel represents a single model's analysis results.
+type VoiceModel struct {
+	Available          bool      `json:"available"`
+	Error              *string   `json:"error"`
+	AggregateSpoofProb *float64  `json:"aggregate_spoof_prob"`
+	Verdict            *string   `json:"verdict"`
+	SegmentScores      []float64 `json:"segment_scores"`
+}
+
+// Legacy models - kept for backward compatibility if needed
+// ============================================================
 
 // VoiceLayers holds per-layer voice analysis results.
 type VoiceLayers struct {
@@ -40,10 +51,10 @@ type VoiceLayers struct {
 }
 
 type VoiceMetadataLayer struct {
-	Status         string              `json:"status"`
-	RiskScore      float64             `json:"risk_score"`
-	Classification string              `json:"classification"`
-	AnomalyCount   int                 `json:"anomaly_count"`
+	Status         string               `json:"status"`
+	RiskScore      float64              `json:"risk_score"`
+	Classification string               `json:"classification"`
+	AnomalyCount   int                  `json:"anomaly_count"`
 	Report         *VoiceMetadataReport `json:"report,omitempty"`
 }
 
@@ -58,9 +69,9 @@ type VoiceMetadataReport struct {
 }
 
 type VoiceSpectralLayer struct {
-	Status         string               `json:"status"`
-	RiskScore      float64              `json:"risk_score"`
-	Classification string               `json:"classification"`
+	Status         string                `json:"status"`
+	RiskScore      float64               `json:"risk_score"`
+	Classification string                `json:"classification"`
 	Metrics        *VoiceSpectralMetrics `json:"metrics,omitempty"`
 }
 

@@ -972,9 +972,7 @@
                             <input type="file" id="df-doc-file" accept="image/*" class="file-input">
                         </div>
                         <div class="btn-row" style="margin-top:12px">
-                            <button id="btn-doc-sync" class="btn primary">Analyze (Sync)</button>
-                            <button id="btn-doc-async" class="btn secondary">Submit Async</button>
-                            <button id="btn-doc-poll" class="btn secondary" disabled>Poll Result</button>
+                            <button id="btn-doc-submit" class="btn primary">Submit</button>
                         </div>
                         <div id="df-doc-status" class="status hidden">
                             <div class="status-head"><span>Doc Tampering Output</span><span id="df-doc-badge" class="badge badge-idle">IDLE</span></div>
@@ -998,9 +996,7 @@
                             <input type="file" id="voice-file" accept="audio/*" class="file-input">
                         </div>
                         <div class="btn-row" style="margin-top:12px">
-                            <button id="btn-voice-sync" class="btn primary">Analyze (Sync)</button>
-                            <button id="btn-voice-async" class="btn secondary">Submit Async</button>
-                            <button id="btn-voice-poll" class="btn secondary" disabled>Poll Result</button>
+                            <button id="btn-voice-submit" class="btn primary">Submit</button>
                         </div>
                         <div id="voice-status" class="status hidden">
                             <div class="status-head"><span>Voice Output</span><span id="voice-badge" class="badge badge-idle">IDLE</span></div>
@@ -1520,20 +1516,7 @@
             }
         }
 
-        document.getElementById('btn-doc-sync').addEventListener('click', () => docAnalyze(true));
-        document.getElementById('btn-doc-async').addEventListener('click', () => docAnalyze(false));
-        document.getElementById('btn-doc-poll').addEventListener('click', async () => {
-            if (!state.doc.taskId) return;
-            setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', 'Polling...', 'PENDING');
-            try {
-                const resp = await fetch(`/v1/deepfake/analyze/${state.doc.taskId}`);
-                const data = await resp.json();
-                const done = data.status === 'completed' || data.status === 'failed';
-                setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', data, done ? (data.status === 'completed' ? 'SUCCESS' : 'ERROR') : 'PENDING');
-            } catch (err) {
-                setStatus('df-doc-status', 'df-doc-badge', 'df-doc-output', `Error: ${err.message}`, 'ERROR');
-            }
-        });
+        document.getElementById('btn-doc-submit').addEventListener('click', () => docAnalyze(true));
 
         // ══════════════════════════════════════════════════════════════════════════
         // DEEPFAKE — VOICE
@@ -1557,20 +1540,7 @@
             }
         }
 
-        document.getElementById('btn-voice-sync').addEventListener('click', () => voiceAnalyze(true));
-        document.getElementById('btn-voice-async').addEventListener('click', () => voiceAnalyze(false));
-        document.getElementById('btn-voice-poll').addEventListener('click', async () => {
-            if (!state.voice.taskId) return;
-            setStatus('voice-status', 'voice-badge', 'voice-output', 'Polling...', 'PENDING');
-            try {
-                const resp = await fetch(`/v1/voice/analyze/${state.voice.taskId}`);
-                const data = await resp.json();
-                const done = data.status === 'completed' || data.status === 'failed';
-                setStatus('voice-status', 'voice-badge', 'voice-output', data, done ? (data.status === 'completed' ? 'SUCCESS' : 'ERROR') : 'PENDING');
-            } catch (err) {
-                setStatus('voice-status', 'voice-badge', 'voice-output', `Error: ${err.message}`, 'ERROR');
-            }
-        });
+        document.getElementById('btn-voice-submit').addEventListener('click', () => voiceAnalyze(true));
 
         // ══════════════════════════════════════════════════════════════════════════
         // CUSTOMER JOURNEY — SITUATIONS (CHAPTERS)

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"device_only/internal/config"
 	"device_only/internal/deepfake"
 	"device_only/internal/handlers"
+	"device_only/internal/middleware"
 	"device_only/internal/orchestration"
 	"device_only/internal/repository"
 	"device_only/internal/service"
@@ -116,6 +118,16 @@ func main() {
 	faceHandler.SetupRoutes(mux)
 	voiceHandler.SetupRoutes(mux)
 
+	// Health check endpoint
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status":  "ok",
+			"message": "API is running",
+		})
+	})
+
 	mux.Handle("/v1/sim/start", simmiddleware.APIKeyAuth(simCfg.TimbleAPIKey, http.HandlerFunc(simAuthHandler.Start)))
 	mux.Handle("/v1/sim/complete", simmiddleware.APIKeyAuth(simCfg.TimbleAPIKey, http.HandlerFunc(simAuthHandler.Complete)))
 	// No auth required for redirect so device can seamlessly navigate to it
@@ -124,12 +136,16 @@ func main() {
 	// Serve static files for demo
 	fs := http.FileServer(http.Dir("static"))
 	mux.Handle("/demo/", http.StripPrefix("/demo/", fs))
+	mux.Handle("/", http.StripPrefix("/", fs))
 	// ----------------------------------
+
+	// Apply CORS middleware
+	handler := middleware.CORSMiddleware(mux)
 
 	// In an actual production scenario, HTTPS configuration and CORS would go here.
 	server := &http.Server{
 		Addr:    cfg.ServerHost + ":" + cfg.ServerPort,
-		Handler: mux,
+		Handler: handler,
 	}
 
 	go func() {
