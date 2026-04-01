@@ -132,6 +132,8 @@ func main() {
 	mux.Handle("/v1/sim/complete", simmiddleware.APIKeyAuth(simCfg.TimbleAPIKey, http.HandlerFunc(simAuthHandler.Complete)))
 	// No auth required for redirect so device can seamlessly navigate to it
 	mux.Handle("/v1/sim/redirect/", http.HandlerFunc(simAuthHandler.Redirect))
+	// No auth required for polling proxy so browser/mobile clients can call it directly
+	mux.Handle("/v1/sim/poll/", http.HandlerFunc(simAuthHandler.Poll))
 
 	// Serve static files for demo
 	fs := http.FileServer(http.Dir("static"))

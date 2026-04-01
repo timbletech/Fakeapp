@@ -127,6 +127,43 @@ func (h *AuthHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, sessURI, http.StatusFound)
 }
 
+// Poll handles GET /v1/sim/poll/{session_id}.
+// It proxies the upstream polling result through the current server domain.
+func (h *AuthHandler) Poll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET is supported.", http.StatusMethodNotAllowed)
+		return
+	}
+
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 5 {
+		http.Error(w, "Invalid polling URL", http.StatusBadRequest)
+		return
+	}
+	sessionID := pathParts[4]
+
+	pollResp, ready, err := h.authService.PollBySessionID(sessionID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "expired") {
+			http.Error(w, "Session not found or expired", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Upstream polling failed", http.StatusBadGateway)
+		return
+	}
+
+	if !ready {
+		writeJSON(w, http.StatusAccepted, map[string]any{
+			"status":     "PENDING",
+			"message":    "Device verification not yet complete. Ensure session_uri has been loaded on device over mobile data, then retry.",
+			"session_id": sessionID,
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, pollResp)
+}
+
 // validMSISDN returns true when s is all digits and at least 10 characters long.
 func validMSISDN(s string) bool {
 	if len(s) < 10 {

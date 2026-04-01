@@ -105,13 +105,14 @@ func (s *AuthService) StartAuth(req *model.StartRequest) (*model.StartResponse, 
 	log.Printf("[INFO] Session created: session_id=%s expires_at=%s", sessionID, session.ExpiresAt.Format(time.RFC3339))
 
 	wrappedURI := fmt.Sprintf("%s/v1/sim/redirect/%s", s.baseURL, sessionID)
+	wrappedPollingURI := fmt.Sprintf("%s/v1/sim/poll/%s", s.baseURL, sessionID)
 
 	return &model.StartResponse{
 		AuthSessionID:  sessionID,
 		ExpiresIn:      int(s.sessionTTL.Seconds()),
 		NextStep:       "SIM_CHALLENGE_REQUIRED",
 		SessionURI:     wrappedURI,
-		PollingURI:     insights.DeviceMatch.PollingURI,
+		PollingURI:     wrappedPollingURI,
 		Instructions:   "Load session_uri on the mobile device over mobile data (not WiFi). The device must use cellular network for SIM verification to work.",
 		SimSwapCheck:   &insights.SimSwapCheck,
 		OperatorLookup: &insights.OperatorLookup,
@@ -243,4 +244,16 @@ func (s *AuthService) GetUpstreamSessionURI(authSessionID string) (string, error
 		return "", fmt.Errorf("session expired")
 	}
 	return session.SessionURI, nil
+}
+
+// PollBySessionID proxies polling for the wrapped polling endpoint.
+func (s *AuthService) PollBySessionID(authSessionID string) (*model.SekuraPollingResponse, bool, error) {
+	session, ok := s.store.Get(authSessionID)
+	if !ok {
+		return nil, false, fmt.Errorf("session not found")
+	}
+	if time.Now().UTC().After(session.ExpiresAt) {
+		return nil, false, fmt.Errorf("session expired")
+	}
+	return s.sekura.PollDeviceMatch(session.PollingURI)
 }
