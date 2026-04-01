@@ -861,14 +861,15 @@
                             <label>Client ID <input id="sim-client-id" type="text" value="client_123"></label>
                             <label>User Reference <input id="sim-user-ref" type="text" value="user_001"></label>
                             <label>MSISDN <input id="sim-msisdn" type="text" value="917905968734"></label>
+                            <label>API Key <input id="sim-api-key" type="text" value="timble-test-key-2026"></label>
                         </div>
                         <div class="btn-row">
-                            <button id="btn-sim-start" class="btn primary">Start SIM Auth</button>
-                            <button id="btn-sim-complete" class="btn secondary" disabled>Poll Result</button>
+                            <button id="btn-sim-start" class="btn primary">Start SIM Session</button>
+                            <button id="btn-sim-complete" class="btn secondary" disabled>Poll polling_uri</button>
                         </div>
                         <div id="sim-status" class="status">
                             <div class="status-head"><span>SIM Output</span><span id="sim-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="sim-output">Awaiting session start.</pre>
+                            <pre id="sim-output">Awaiting direct SIM session start.</pre>
                         </div>
                     </div>
                 </section>
@@ -1170,7 +1171,7 @@
         const publicKeyBase64 = 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0...';
         const state = {
             device: { bindingId: null, deviceId: null, authSessionId: null, challengeId: null },
-            sim: { authSessionId: null },
+            sim: { authSessionId: null, sessionUri: null, pollingUri: null },
             hybrid: { bindingId: null, deviceId: null, authSessionId: null },
             faceVid: { jobId: null },
             voice: { taskId: null },
@@ -1195,16 +1196,24 @@
             });
         }
 
-        async function postJSON(url, body) {
-            const response = await fetch(url, {
+        async function requestJSON(url, options = {}) {
+            const response = await fetch(url, options);
+            let data;
+            try {
+                const text = await response.text();
+                data = text ? JSON.parse(text) : null;
+            } catch {
+                data = null;
+            }
+            return { response, data };
+        }
+
+        async function postJSON(url, body, headers = {}) {
+            return requestJSON(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...headers },
                 body: JSON.stringify(body)
             });
-            let data;
-            try { data = await response.json(); }
-            catch { data = { error: 'invalid_response' }; }
-            return { response, data };
         }
 
         function setupFileDrop(dropId, inputId, filenameId) {
@@ -1351,27 +1360,69 @@
             const clientId = document.getElementById('sim-client-id').value.trim();
             const userRef = document.getElementById('sim-user-ref').value.trim();
             const msisdn = document.getElementById('sim-msisdn').value.trim();
+            const apiKey = document.getElementById('sim-api-key').value.trim();
 
-            setStatus('sim-status', 'sim-badge', 'sim-output', 'Starting SIM auth...', 'PENDING');
+            state.sim.authSessionId = null;
+            state.sim.sessionUri = null;
+            state.sim.pollingUri = null;
+            document.getElementById('btn-sim-complete').disabled = true;
+
+            setStatus('sim-status', 'sim-badge', 'sim-output', 'Starting direct SIM session...', 'PENDING');
             try {
-                const { response, data } = await postJSON('/v1/auth/start', { client_id: clientId, user_ref: userRef, action: 'check', mode: 'sim', msisdn });
+                const { response, data } = await postJSON('/v1/sim/start', {
+                    client_id: clientId,
+                    user_ref: userRef,
+                    msisdn
+                }, {
+                    'X-API-Key': apiKey
+                });
                 if (!response.ok) { setStatus('sim-status', 'sim-badge', 'sim-output', data, 'ERROR'); return; }
                 state.sim.authSessionId = data.auth_session_id;
-                document.getElementById('btn-sim-complete').disabled = false;
-                setStatus('sim-status', 'sim-badge', 'sim-output', 'Session started. Click Poll Result.', 'PENDING');
+                state.sim.sessionUri = data.session_uri;
+                state.sim.pollingUri = data.polling_uri;
+                document.getElementById('btn-sim-complete').disabled = !data.polling_uri;
+                setStatus('sim-status', 'sim-badge', 'sim-output', data, 'PENDING');
             } catch (err) {
                 setStatus('sim-status', 'sim-badge', 'sim-output', `Error: ${err.message}`, 'ERROR');
             }
         });
 
         document.getElementById('btn-sim-complete').addEventListener('click', async () => {
-            if (!state.sim.authSessionId) return;
-            const clientId = document.getElementById('sim-client-id').value.trim();
-            setStatus('sim-status', 'sim-badge', 'sim-output', 'Polling...', 'PENDING');
+            if (!state.sim.pollingUri) return;
+            setStatus('sim-status', 'sim-badge', 'sim-output', {
+                status: 'PENDING',
+                message: 'Polling upstream polling_uri...',
+                polling_uri: state.sim.pollingUri
+            }, 'PENDING');
             try {
-                const { response, data } = await postJSON('/v1/auth/complete', { client_id: clientId, mode: 'sim', auth_session_id: state.sim.authSessionId });
-                const status = data.decision === 'ALLOW' ? 'SUCCESS' : data.decision === 'DENY' ? 'ERROR' : 'PENDING';
-                setStatus('sim-status', 'sim-badge', 'sim-output', data, status);
+                const { response, data } = await requestJSON(state.sim.pollingUri, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.status === 202) {
+                    setStatus('sim-status', 'sim-badge', 'sim-output', data || {
+                        status: 'PENDING',
+                        message: 'Device verification not yet complete. Ensure session_uri has been loaded on the mobile device over mobile data, then poll again.',
+                        polling_uri: state.sim.pollingUri
+                    }, 'PENDING');
+                    return;
+                }
+
+                if (!response.ok) {
+                    setStatus('sim-status', 'sim-badge', 'sim-output', data || {
+                        status: 'ERROR',
+                        http_status: response.status,
+                        polling_uri: state.sim.pollingUri
+                    }, 'ERROR');
+                    return;
+                }
+
+                setStatus('sim-status', 'sim-badge', 'sim-output', data || {
+                    status: 'SUCCESS',
+                    http_status: response.status,
+                    polling_uri: state.sim.pollingUri
+                }, 'SUCCESS');
             } catch (err) {
                 setStatus('sim-status', 'sim-badge', 'sim-output', `Error: ${err.message}`, 'ERROR');
             }

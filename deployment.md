@@ -566,6 +566,7 @@ X-API-Key: your_timble_api_key
 {
   "auth_session_id": "sim_sess_abc",
   "session_uri": "https://...",
+  "polling_uri": "https://...",
   "expires_in": 300,
   "next_step": "REDIRECT_USER",
   "instructions": "Redirect user to session_uri"

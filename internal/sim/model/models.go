@@ -38,6 +38,7 @@ type StartResponse struct {
 	ExpiresIn      int                   `json:"expires_in"`
 	NextStep       string                `json:"next_step"`
 	SessionURI     string                `json:"session_uri"`
+	PollingURI     string                `json:"polling_uri"`
 	Instructions   string                `json:"instructions"`
 	SimSwapCheck   *SimSwapCheckResult   `json:"sim_swap_check,omitempty"`
 	OperatorLookup *OperatorLookupResult `json:"operator_lookup,omitempty"`

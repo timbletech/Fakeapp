@@ -1,0 +1,1041 @@
+openapi: 3.0.3
+info:
+  title: Timble Authentication API with Deepfake Detection
+  version: 1.0.0
+  description: >
+    Unified authentication API supporting device-only, SIM-only (XConnect),
+    and hybrid (SIM + device cryptography) flows, plus deepfake detection
+    capabilities for face, voice, and document tampering.
+  contact:
+    name: Support
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+paths:
+  # Device Management Endpoints
+  /v1/device/check:
+    get:
+      summary: Check device binding status
+      description: Verify if a device is registered and its current status
+      parameters:
+        - in: query
+          name: device_binding_id
+          schema:
+            type: string
+          required: true
+          description: The device binding identifier
+      responses:
+        '200':
+          description: Device status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceCheckResponse'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/device/register:
+    post:
+      summary: Register a device binding
+      description: Register or replace an active device binding for a client user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeviceRequest'
+      responses:
+        '200':
+          description: Device registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterDeviceResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/device/revoke:
+    post:
+      summary: Revoke device binding
+      description: Revoke an active device binding for a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevokeDeviceRequest'
+      responses:
+        '200':
+          description: Device binding revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevokeDeviceResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/device/update:
+    put:
+      summary: Update device information
+      description: Update device metadata and information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+      responses:
+        '200':
+          description: Device information updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateDeviceResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Authentication Endpoints
+  /v1/auth/start:
+    post:
+      summary: Start authentication session
+      description: >
+        Initiate authentication in device, SIM, or hybrid mode.
+        Mode is resolved by request `mode` + client policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartAuthRequest'
+      responses:
+        '200':
+          description: Authentication session started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartAuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream SIM provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/auth/complete:
+    post:
+      summary: Complete authentication
+      description: >
+        Complete an authentication session.
+        - Device mode: verifies challenge signature
+        - SIM mode: polls SIM decision
+        - Hybrid mode: requires SIM allow + valid device signature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteAuthRequest'
+      responses:
+        '200':
+          description: Authentication decision (ALLOW/DENY)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteAuthResponse'
+        '202':
+          description: SIM pending (retry completion)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteAuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream SIM provider error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/auth/verify:
+    post:
+      summary: Verify auth context token
+      description: Validate an authentication context token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTokenRequest'
+      responses:
+        '200':
+          description: Token verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyTokenResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Hybrid Mode (Alias Routes)
+  /v1/hybrid/start:
+    post:
+      summary: Start hybrid authentication
+      description: Alias route for hybrid mode authentication start
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartAuthRequest'
+      responses:
+        '200':
+          description: Hybrid session started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartAuthResponse'
+
+  /v1/hybrid/complete:
+    post:
+      summary: Complete hybrid authentication
+      description: Alias route for hybrid mode authentication completion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteAuthRequest'
+      responses:
+        '200':
+          description: Hybrid ALLOW/DENY decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteAuthResponse'
+        '202':
+          description: SIM pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteAuthResponse'
+
+  # SIM-Only Endpoints (Internal/Legacy)
+  /v1/sim/start:
+    post:
+      summary: Start SIM-only authentication
+      description: Direct SIM API (legacy/internal use)
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimStartRequest'
+      responses:
+        '200':
+          description: SIM session initialized
+
+  /v1/sim/complete:
+    post:
+      summary: Complete SIM-only authentication
+      description: Direct SIM API completion (legacy/internal use)
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimCompleteRequest'
+      responses:
+        '200':
+          description: SIM final decision
+        '202':
+          description: SIM pending
+
+  # Deepfake Detection - Face
+  /v1/face/image:
+    post:
+      summary: Detect deepfake in image
+      description: >
+        Analyze a single image for face deepfake detection.
+        Accepts multipart/form-data with 'file' field.
+        Returns instant verdict.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file (JPEG, PNG)
+      responses:
+        '200':
+          description: Face analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FaceDetectResponse'
+        '400':
+          description: Invalid image or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/face/video:
+    post:
+      summary: Submit video for face deepfake analysis
+      description: >
+        Asynchronously analyze a video for face deepfake detection.
+        Accepts multipart/form-data with 'file' field.
+        Returns task_id for polling results.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Video file (MP4, AVI, MOV)
+      responses:
+        '202':
+          description: Video submitted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoSubmitResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: List video analysis jobs
+      description: Retrieve list of submitted video analysis jobs
+      responses:
+        '200':
+          description: List of jobs returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: string
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JobInfo'
+
+  /v1/face/video/{job_id}:
+    get:
+      summary: Poll face video analysis results
+      description: Retrieve analysis results for a submitted video job
+      parameters:
+        - in: path
+          name: job_id
+          schema:
+            type: string
+          required: true
+          description: The job ID from video submission
+      responses:
+        '200':
+          description: Analysis complete with results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoAnalysisResponse'
+        '202':
+          description: Still processing, retry later
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Deepfake Detection - Voice
+  /v1/voice/analyze:
+    post:
+      summary: Analyze voice for deepfake detection
+      description: >
+        Analyze audio data for voice deepfake detection.
+        Supports both sync and async modes (use ?sync=true for synchronous).
+        Send audio data as base64-encoded string in request body.
+      parameters:
+        - in: query
+          name: sync
+          schema:
+            type: boolean
+            default: false
+          description: If true, wait for result synchronously
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoiceAnalyzeRequest'
+      responses:
+        '200':
+          description: Voice analysis completed or submitted
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/VoiceResultResponse'
+                  - $ref: '#/components/schemas/VoiceSubmitResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/voice/analyze/{task_id}:
+    get:
+      summary: Poll voice analysis results
+      description: Retrieve analysis results for a submitted voice task
+      parameters:
+        - in: path
+          name: task_id
+          schema:
+            type: string
+          required: true
+          description: The task ID from voice submission
+      responses:
+        '200':
+          description: Analysis complete with results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoiceResultResponse'
+        '202':
+          description: Still processing, retry later
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingResponse'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # Deepfake Detection - Document
+  /v1/deepfake/analyze:
+    post:
+      summary: Analyze document for tampering
+      description: >
+        Analyze document data for tampering detection.
+        Supports both sync and async modes (use ?sync=true for synchronous).
+        Send document data as base64-encoded string in request body.
+      parameters:
+        - in: query
+          name: sync
+          schema:
+            type: boolean
+            default: false
+          description: If true, wait for result synchronously
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentAnalyzeRequest'
+      responses:
+        '200':
+          description: Document analysis completed or submitted
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/DocumentResultResponse'
+                  - $ref: '#/components/schemas/DocumentSubmitResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/deepfake/analyze/{task_id}:
+    get:
+      summary: Poll document analysis results
+      description: Retrieve analysis results for a submitted document task
+      parameters:
+        - in: path
+          name: task_id
+          schema:
+            type: string
+          required: true
+          description: The task ID from document submission
+      responses:
+        '200':
+          description: Analysis complete with results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResultResponse'
+        '202':
+          description: Still processing, retry later
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingResponse'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    # Common Models
+    ErrorResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        error:
+          type: string
+        message:
+          type: string
+
+    # Device Models
+    DeviceInfo:
+      type: object
+      properties:
+        device_id:
+          type: string
+        platform:
+          type: string
+          enum: [iOS, Android, Web]
+        app_version:
+          type: string
+        device_model:
+          type: string
+        os_version:
+          type: string
+        ip_address:
+          type: string
+
+    DeviceCheckResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        device_binding_id:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, revoked]
+        client_id:
+          type: string
+        user_ref:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_verified:
+          type: string
+          format: date-time
+
+    RegisterDeviceRequest:
+      type: object
+      required: [client_id, user_ref, public_key, device_info]
+      properties:
+        client_id:
+          type: string
+        user_ref:
+          type: string
+        public_key:
+          type: string
+          description: ECDSA P-256 public key in PEM format
+        device_info:
+          $ref: '#/components/schemas/DeviceInfo'
+
+    RegisterDeviceResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+        client_id:
+          type: string
+        device_binding_id:
+          type: string
+        status:
+          type: string
+
+    RevokeDeviceRequest:
+      type: object
+      required: [device_binding_id]
+      properties:
+        device_binding_id:
+          type: string
+        client_id:
+          type: string
+
+    RevokeDeviceResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        device_binding_id:
+          type: string
+        status:
+          type: string
+
+    UpdateDeviceRequest:
+      type: object
+      properties:
+        device_binding_id:
+          type: string
+        device_info:
+          $ref: '#/components/schemas/DeviceInfo'
+
+    UpdateDeviceResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        device_binding_id:
+          type: string
+        status:
+          type: string
+
+    # Authentication Models
+    StartAuthRequest:
+      type: object
+      required: [client_id, user_ref]
+      properties:
+        client_id:
+          type: string
+        user_ref:
+          type: string
+        action:
+          type: string
+        mode:
+          type: string
+          enum: [device, sim, hybrid]
+        msisdn:
+          type: string
+          description: Required for SIM and hybrid modes
+        device_binding_id:
+          type: string
+          description: Required for device and hybrid modes
+        device_info:
+          $ref: '#/components/schemas/DeviceInfo'
+
+    DeviceChallenge:
+      type: object
+      properties:
+        challenge_id:
+          type: string
+        challenge:
+          type: string
+        expires_in_seconds:
+          type: integer
+
+    SimChallenge:
+      type: object
+      properties:
+        auth_session_id:
+          type: string
+        session_uri:
+          type: string
+        expires_in_seconds:
+          type: integer
+        instructions:
+          type: string
+
+    StartAuthResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+        client_id:
+          type: string
+        mode:
+          type: string
+        auth_session_id:
+          type: string
+        next_step:
+          type: string
+        device:
+          $ref: '#/components/schemas/DeviceChallenge'
+        sim:
+          $ref: '#/components/schemas/SimChallenge'
+        status:
+          type: string
+
+    CompleteAuthRequest:
+      type: object
+      required: [auth_session_id]
+      properties:
+        client_id:
+          type: string
+        mode:
+          type: string
+          enum: [device, sim, hybrid]
+        auth_session_id:
+          type: string
+        challenge_id:
+          type: string
+        device_signature:
+          type: string
+
+    SimDecision:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [ALLOW, DENY]
+        reason_code:
+          type: string
+        reason_message:
+          type: string
+        status:
+          type: string
+
+    CompleteAuthResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+        client_id:
+          type: string
+        mode:
+          type: string
+        auth_session_id:
+          type: string
+        decision:
+          type: string
+          enum: [ALLOW, DENY, PENDING]
+        reason_code:
+          type: string
+        reason_message:
+          type: string
+        next_step:
+          type: string
+        attempts_remaining:
+          type: integer
+        sim:
+          $ref: '#/components/schemas/SimDecision'
+        auth_context_token:
+          type: string
+        expires_in_seconds:
+          type: integer
+        status:
+          type: string
+
+    VerifyTokenRequest:
+      type: object
+      required: [client_id, auth_context_token]
+      properties:
+        client_id:
+          type: string
+        auth_context_token:
+          type: string
+
+    VerifyTokenResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+        client_id:
+          type: string
+        valid:
+          type: boolean
+        expires_in_seconds:
+          type: integer
+        status:
+          type: string
+
+    SimStartRequest:
+      type: object
+      required: [client_id, user_ref, msisdn]
+      properties:
+        client_id:
+          type: string
+        user_ref:
+          type: string
+        msisdn:
+          type: string
+        action:
+          type: string
+
+    SimCompleteRequest:
+      type: object
+      required: [auth_session_id]
+      properties:
+        auth_session_id:
+          type: string
+
+    # Deepfake Detection Models
+    FaceDetectResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        verdict:
+          type: string
+          enum: [real, fake, unclear]
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        analysis:
+          type: object
+          properties:
+            face_detected:
+              type: boolean
+            quality_score:
+              type: number
+            artifacts:
+              type: array
+              items:
+                type: string
+
+    VideoSubmitResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        status:
+          type: string
+        execution_mode:
+          type: string
+        task_id:
+          type: string
+        poll_url:
+          type: string
+
+    VideoAnalysisResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        task_id:
+          type: string
+        status:
+          type: string
+        verdict:
+          type: string
+          enum: [real, fake, unclear]
+        confidence:
+          type: number
+        frames_analyzed:
+          type: integer
+        duration_seconds:
+          type: number
+        analysis:
+          type: object
+
+    JobInfo:
+      type: object
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    VoiceAnalyzeRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: string
+          description: Base64-encoded audio data
+        layers:
+          type: array
+          items:
+            type: string
+          description: Analysis layers to apply
+
+    VoiceSubmitResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        status:
+          type: string
+        execution_mode:
+          type: string
+        task_id:
+          type: string
+        requested_layers:
+          type: array
+          items:
+            type: string
+        poll_url:
+          type: string
+
+    VoiceResultResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        task_id:
+          type: string
+          description: Present only for async results
+        status:
+          type: string
+        verdict:
+          type: string
+          enum: [real, fake, unclear]
+        confidence:
+          type: number
+        duration_seconds:
+          type: number
+        speakers_detected:
+          type: integer
+        analysis:
+          type: object
+
+    DocumentAnalyzeRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: string
+          description: Base64-encoded document data
+        layers:
+          type: array
+          items:
+            type: string
+          description: Analysis layers to apply
+
+    DocumentSubmitResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        status:
+          type: string
+        execution_mode:
+          type: string
+        task_id:
+          type: string
+        requested_layers:
+          type: array
+          items:
+            type: string
+        poll_url:
+          type: string
+
+    DocumentResultResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        task_id:
+          type: string
+          description: Present only for async results
+        status:
+          type: string
+        verdict:
+          type: string
+          enum: [authentic, tampered, unclear]
+        confidence:
+          type: number
+        tampering_regions:
+          type: array
+          items:
+            type: object
+        analysis:
+          type: object
+
+    PendingResponse:
+      type: object
+      properties:
+        request_id:
+          type: string
+        task_id:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+
+tags:
+  - name: Device Management
+    description: Device registration and lifecycle management
+  - name: Authentication
+    description: Authentication flow endpoints
+  - name: Face Detection
+    description: Face deepfake detection endpoints
+  - name: Voice Detection
+    description: Voice deepfake detection endpoints
+  - name: Document Detection
+    description: Document tampering detection endpoints
