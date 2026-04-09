@@ -7,14 +7,21 @@ type FaceInput struct {
 
 // FaceResult holds the verdict and confidence from the face detection service.
 type FaceResult struct {
-	Verdict    string `json:"verdict"`
-	Confidence string `json:"confidence"`
+	Verdict         string  `json:"verdict"`
+	Confidence      string  `json:"confidence"`
+	FakeProbability float64 `json:"fake_probability,omitempty"`
 }
 
 // FaceMeta holds face count metadata from the face detection service.
 type FaceMeta struct {
-	FacesDetected int  `json:"faces_detected"`
-	MultipleFaces bool `json:"multiple_faces"`
+	FacesDetected int     `json:"faces_detected,omitempty"`
+	MultipleFaces bool    `json:"multiple_faces,omitempty"`
+	DurationSec   float64 `json:"duration_sec,omitempty"`
+	FPS           float64 `json:"fps,omitempty"`
+	TotalFrames   int     `json:"total_frames,omitempty"`
+	Width         int     `json:"width,omitempty"`
+	Height        int     `json:"height,omitempty"`
+	FileSize      int64   `json:"file_size,omitempty"`
 }
 
 // FaceImageResult is returned by POST /detect/image on the face detection service.
@@ -27,13 +34,17 @@ type FaceImageResult struct {
 	Detail string `json:"detail,omitempty"`
 }
 
-// VideoSubmitResult is returned by POST /detect/video (job queued).
+// VideoSubmitResult is returned by POST /detect/video.
+// When the upstream returns a synchronous result, JobID is empty and Input/Result/Meta are populated.
 type VideoSubmitResult struct {
-	Status      string `json:"status"`
-	JobID       string `json:"job_id"`
-	Filename    string `json:"filename"`
-	SampleEvery int    `json:"sample_every"`
-	PollURL     string `json:"poll_url"`
+	Status      string      `json:"status"`
+	JobID       string      `json:"job_id,omitempty"`
+	Filename    string      `json:"filename,omitempty"`
+	SampleEvery int         `json:"sample_every,omitempty"`
+	PollURL     string      `json:"poll_url,omitempty"`
+	Input       *FaceInput  `json:"input,omitempty"`
+	Result      *FaceResult `json:"result,omitempty"`
+	Meta        *FaceMeta   `json:"meta,omitempty"`
 	// Detail is populated on error responses.
 	Detail string `json:"detail,omitempty"`
 }

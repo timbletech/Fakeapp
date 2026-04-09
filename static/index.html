@@ -285,6 +285,169 @@
             word-break: break-word;
             max-height: 300px;
         }
+        .status .result-card {
+            padding: 0;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            max-height: 560px;
+            overflow-y: auto;
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+        }
+        /* ── Status banner ── */
+        .result-card .rc-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.02em;
+        }
+        .result-card .rc-banner.rc-banner-success { background: linear-gradient(135deg, #064e3b, #0f172a); color: #4ade80; }
+        .result-card .rc-banner.rc-banner-error   { background: linear-gradient(135deg, #7f1d1d, #0f172a); color: #f87171; }
+        .result-card .rc-banner.rc-banner-pending  { background: linear-gradient(135deg, #78350f, #0f172a); color: #fbbf24; }
+        .result-card .rc-banner.rc-banner-info     { background: linear-gradient(135deg, #1e3a5f, #0f172a); color: #60a5fa; }
+        .result-card .rc-banner-icon {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 900;
+            flex-shrink: 0;
+        }
+        .rc-banner-success .rc-banner-icon { background: #4ade80; color: #064e3b; }
+        .rc-banner-error .rc-banner-icon   { background: #f87171; color: #7f1d1d; }
+        .rc-banner-pending .rc-banner-icon { background: #fbbf24; color: #78350f; }
+        .rc-banner-info .rc-banner-icon    { background: #60a5fa; color: #1e3a5f; }
+        /* ── Section ── */
+        .result-card .rc-section {
+            border-bottom: 1px solid #1e293b;
+        }
+        .result-card .rc-section:last-child { border-bottom: none; }
+        .result-card .rc-section-title {
+            padding: 7px 16px;
+            background: #1e293b;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .result-card .rc-section-title::before {
+            content: '';
+            width: 3px; height: 12px;
+            border-radius: 2px;
+            background: #334155;
+            flex-shrink: 0;
+        }
+        /* ── Row ── */
+        .result-card .rc-row {
+            display: flex;
+            align-items: baseline;
+            padding: 5px 16px;
+            gap: 16px;
+            border-bottom: 1px solid rgba(30,41,59,0.6);
+        }
+        .result-card .rc-row:last-child { border-bottom: none; }
+        .result-card .rc-key {
+            flex: 0 0 170px;
+            color: #64748b;
+            font-size: 0.72rem;
+            white-space: nowrap;
+        }
+        .result-card .rc-val {
+            flex: 1;
+            color: #cbd5e1;
+            word-break: break-all;
+        }
+        .result-card .rc-val.rc-highlight { font-weight: 700; }
+        .result-card .rc-val.rc-success { color: #4ade80; }
+        .result-card .rc-val.rc-error   { color: #f87171; }
+        .result-card .rc-val.rc-warning { color: #fbbf24; }
+        .result-card .rc-val.rc-info    { color: #60a5fa; }
+        .result-card .rc-val .rc-pill {
+            display: inline-block;
+            padding: 1px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        .result-card .rc-pill-success { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .result-card .rc-pill-error   { background: rgba(248,113,113,0.15); color: #f87171; }
+        .result-card .rc-pill-warning { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .result-card .rc-pill-info    { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        /* ── Mono value (IDs, tokens) ── */
+        .result-card .rc-val .rc-mono {
+            background: #1e293b;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.72rem;
+            color: #94a3b8;
+            word-break: break-all;
+            display: inline;
+        }
+        /* ── Progress bar ── */
+        .result-card .rc-progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+        .result-card .rc-progress-bar {
+            flex: 1;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .result-card .rc-progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .result-card .rc-progress-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            flex-shrink: 0;
+            min-width: 36px;
+            text-align: right;
+        }
+        /* ── Nested ── */
+        .result-card .rc-nested {
+            padding: 2px 16px 6px 32px;
+            border-left: 2px solid #1e293b;
+            margin-left: 16px;
+        }
+        .result-card .rc-nested .rc-row {
+            padding: 3px 0;
+        }
+        .result-card .rc-nested .rc-key {
+            flex: 0 0 140px;
+        }
+        /* ── Separator between array items ── */
+        .result-card .rc-array-sep {
+            border-bottom: 1px dashed #334155;
+            margin: 4px 0;
+        }
+        /* ── String message ── */
+        .result-card .rc-string-msg {
+            padding: 14px 16px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #94a3b8;
+        }
+        /* ── Timestamp value ── */
+        .result-card .rc-val .rc-ts {
+            color: #94a3b8;
+            font-size: 0.72rem;
+        }
 
         /* Badge */
         .badge {
@@ -826,7 +989,7 @@
                         <button id="btn-dev-register" class="btn primary">Register Device</button>
                         <div id="dev-reg-status" class="status hidden">
                             <div class="status-head"><span>Registration Output</span><span id="dev-reg-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="dev-reg-output"></pre>
+                            <div id="dev-reg-output" class="result-card"></div>
                         </div>
                     </div>
                     <div class="panel">
@@ -842,7 +1005,7 @@
                         </div>
                         <div id="dev-auth-status" class="status hidden">
                             <div class="status-head"><span>Authentication Output</span><span id="dev-auth-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="dev-auth-output">Register device to begin.</pre>
+                            <div id="dev-auth-output" class="result-card"><div class="rc-string-msg">Register device to begin.</div></div>
                         </div>
                     </div>
                 </section>
@@ -869,7 +1032,7 @@
                         </div>
                         <div id="sim-status" class="status">
                             <div class="status-head"><span>SIM Output</span><span id="sim-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="sim-output">Awaiting direct SIM session start.</pre>
+                            <div id="sim-output" class="result-card"><div class="rc-string-msg">Awaiting direct SIM session start.</div></div>
                         </div>
                     </div>
                 </section>
@@ -892,7 +1055,7 @@
                         <button id="btn-hy-register" class="btn primary">Register Hybrid Device</button>
                         <div id="hy-reg-status" class="status hidden">
                             <div class="status-head"><span>Hybrid Registration</span><span id="hy-reg-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="hy-reg-output"></pre>
+                            <div id="hy-reg-output" class="result-card"></div>
                         </div>
                     </div>
                     <div class="panel">
@@ -903,7 +1066,7 @@
                         </div>
                         <div id="hy-auth-status" class="status hidden">
                             <div class="status-head"><span>Hybrid Auth Output</span><span id="hy-auth-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="hy-auth-output">Register hybrid device to begin.</pre>
+                            <div id="hy-auth-output" class="result-card"><div class="rc-string-msg">Register hybrid device to begin.</div></div>
                         </div>
                     </div>
                 </section>
@@ -925,7 +1088,7 @@
                         <button id="btn-face-img" class="btn primary" style="margin-top:12px">Analyze Image</button>
                         <div id="face-img-status" class="status hidden">
                             <div class="status-head"><span>Face Image Output</span><span id="face-img-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="face-img-output"></pre>
+                            <div id="face-img-output" class="result-card"></div>
                         </div>
                     </div>
                 </section>
@@ -940,20 +1103,16 @@
                     </div>
                     <div class="panel">
                         <h3>Submit Video</h3>
-                        <div class="form-grid" style="grid-template-columns:1fr">
-                            <label>Sample Every N Frames <input id="face-vid-sample" type="number" value="10" min="1"></label>
-                        </div>
                         <div class="file-drop-area" id="face-vid-drop">
                             <span id="face-vid-filename">Drop video here or click to select</span>
                             <input type="file" id="face-vid-file" accept="video/*" class="file-input">
                         </div>
                         <div class="btn-row" style="margin-top:12px">
                             <button id="btn-face-vid-submit" class="btn primary">Submit Video</button>
-                            <button id="btn-face-vid-poll" class="btn secondary" disabled>Poll Result</button>
                         </div>
                         <div id="face-vid-status" class="status hidden">
                             <div class="status-head"><span>Face Video Output</span><span id="face-vid-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="face-vid-output"></pre>
+                            <div id="face-vid-output" class="result-card"></div>
                         </div>
                     </div>
                 </section>
@@ -977,7 +1136,7 @@
                         </div>
                         <div id="df-doc-status" class="status hidden">
                             <div class="status-head"><span>Doc Tampering Output</span><span id="df-doc-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="df-doc-output"></pre>
+                            <div id="df-doc-output" class="result-card"></div>
                         </div>
                     </div>
                 </section>
@@ -1001,7 +1160,7 @@
                         </div>
                         <div id="voice-status" class="status hidden">
                             <div class="status-head"><span>Voice Output</span><span id="voice-badge" class="badge badge-idle">IDLE</span></div>
-                            <pre id="voice-output"></pre>
+                            <div id="voice-output" class="result-card"></div>
                         </div>
                     </div>
                 </section>
@@ -1178,13 +1337,329 @@
             doc: { taskId: null }
         };
 
+        /* ── Friendly field labels ── */
+        const fieldLabels = {
+            // General / Auth
+            request_id: 'Request ID', timestamp: 'Timestamp', client_id: 'Client ID',
+            device_binding_id: 'Device Binding ID', status: 'Status', auth_session_id: 'Auth Session ID',
+            next_step: 'Next Step', mode: 'Mode', decision: 'Decision', reason_code: 'Reason Code',
+            reason_message: 'Reason Message', auth_context_token: 'Auth Context Token',
+            expires_in_seconds: 'Expires In (s)', attempts_remaining: 'Attempts Left',
+            valid: 'Valid', has_active_device: 'Has Active Device', message: 'Message',
+            challenge_id: 'Challenge ID', challenge: 'Challenge', session_uri: 'Session URI',
+            polling_uri: 'Polling URI', instructions: 'Instructions',
+            public_key: 'Public Key', http_status: 'HTTP Status',
+
+            // Face Detection
+            input: 'Input Info', result: 'Detection Result', meta: 'Metadata',
+            verdict: 'Verdict', confidence: 'Confidence', faces_detected: 'Faces Detected',
+            multiple_faces: 'Multiple Faces', type: 'Input Type',
+            fake_probability: 'Fake Probability', duration_sec: 'Duration (s)', fps: 'FPS',
+            total_frames: 'Total Frames', width: 'Width', height: 'Height', file_size: 'File Size',
+
+            // Video / Job
+            job_id: 'Job ID', filename: 'Filename',
+            progress: 'Progress', error: 'Error', detail: 'Detail',
+
+            // Doc Tampering (layers)
+            task_id: 'Task ID', task_state: 'Task State', execution_mode: 'Execution Mode',
+            requested_layers: 'Requested Layers', code: 'Code', supported_layers: 'Supported Layers',
+            layers: 'Analysis Layers', summary: 'Summary', timings: 'Timings',
+            metadata: 'Metadata Layer', vae: 'VAE Layer', ai_model: 'AI Model Layer',
+            report: 'Detailed Report', metrics: 'Metrics', components: 'Model Components',
+            component_contributions: 'Component Contributions',
+            resnet18: 'ResNet-18 Classifier', llm: 'LLM Reasoning',
+            classifier: 'Classifier',
+
+            // Doc Tampering fields
+            risk_score: 'Risk Score', classification: 'Classification', anomaly_count: 'Anomaly Count',
+            synthetic_index: 'Synthetic Index', correlation: 'Correlation', noise_energy: 'Noise Energy',
+            threshold: 'Threshold', device: 'Device', tamper_probability: 'Tamper Probability',
+            pred_label: 'Predicted Label', class_probabilities: 'Class Probabilities',
+            model_name: 'Model Name', image_size: 'Image Size', reason: 'Reason',
+            component: 'Component', score: 'Score', weight: 'Weight', weighted_score: 'Weighted Score',
+            overall_risk_score: 'Overall Risk Score', risk_level: 'Risk Level',
+            successful_layers: 'Successful Layers', failed_layers: 'Failed Layers',
+            skipped_layers: 'Skipped Layers', layer: 'Layer',
+            contributions: 'Contributions',
+            file_name: 'File Name', format: 'Format', dimensions: 'Dimensions',
+            exif: 'EXIF Data', anomalies: 'Anomalies',
+
+            // Timings
+            layer_durations_ms: 'Layer Durations (ms)', total_ms: 'Total (ms)',
+
+            // Voice (VARE)
+            duration_sec: 'Duration (s)', n_segments: 'Segments', ensemble_score: 'Ensemble Score',
+            risk_color: 'Risk Color', model_confidence: 'Model Confidence',
+            models: 'Voice Models',
+            aggregate_spoof_prob: 'Spoof Probability', available: 'Available',
+            segment_scores: 'Segment Scores',
+            duration_seconds: 'Duration (s)', sample_rate: 'Sample Rate', channels: 'Channels',
+
+            // Runtime
+            runtime_config: 'Runtime Config',
+        };
+
+        /* IDs & tokens get mono styling */
+        const monoKeys = new Set([
+            'request_id','device_binding_id','auth_session_id','challenge_id',
+            'auth_context_token','job_id','task_id','challenge','device_id',
+            'session_uri','polling_uri','public_key',
+            'file_name','model_name','pred_label','device'
+        ]);
+
+        /* keys that hold 0-1 scores or probabilities */
+        const scoreKeys = new Set([
+            'risk_score','overall_risk_score','tamper_probability',
+            'ensemble_score','model_confidence','aggregate_spoof_prob',
+            'synthetic_index','correlation','noise_energy','score',
+            'weight','weighted_score','progress','fake_probability'
+        ]);
+
+        /* keys whose values should render as pills */
+        const pillKeys = new Set([
+            'status','decision','verdict','classification','risk_level','task_state',
+            'risk_color','execution_mode','confidence'
+        ]);
+
+        function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+        /* determine pill colour tier */
+        function pillTier(key, val) {
+            const s = String(val).toUpperCase();
+            if (['REGISTERED','SUCCESS','ALLOW','REAL','AUTHENTIC','LEGITIMATE','LOW','COMPLETED','ACTIVE','OK','PASS','SAFE','ACCEPT'].includes(s)) return 'success';
+            if (['ERROR','DENY','FAKE','SYNTHETIC','TAMPERED','HIGH','FAILED','CRITICAL','REVOKED','REJECT','SPOOF','BLOCKED'].includes(s)) return 'error';
+            if (['PENDING','SUSPICIOUS','MEDIUM','INCONCLUSIVE','PROCESSING','QUEUED','WARNING','UNCERTAIN'].includes(s)) return 'warning';
+            // confidence: high = good info, low = warning
+            if (key === 'confidence') {
+                if (s === 'HIGH') return 'success';
+                if (s === 'LOW') return 'warning';
+                return 'info';
+            }
+            // risk_color from VARE: green/yellow/red
+            if (key === 'risk_color') {
+                if (s === 'GREEN') return 'success';
+                if (s === 'RED') return 'error';
+                if (s === 'YELLOW' || s === 'ORANGE') return 'warning';
+            }
+            return 'info';
+        }
+
+        /* progress bar color based on value — higher = more risky for risk keys */
+        function barColor(key, v) {
+            if (key === 'progress') return '#60a5fa';
+            if (['tamper_probability','aggregate_spoof_prob','risk_score','overall_risk_score','ensemble_score','fake_probability'].includes(key)) {
+                if (v <= 0.3) return '#4ade80';
+                if (v <= 0.6) return '#fbbf24';
+                return '#f87171';
+            }
+            if (['model_confidence'].includes(key)) {
+                // Higher confidence = better (green)
+                if (v >= 0.7) return '#4ade80';
+                if (v >= 0.4) return '#fbbf24';
+                return '#f87171';
+            }
+            return '#60a5fa';
+        }
+
+        /* render a single value cell */
+        function renderVal(key, val) {
+            if (val === null || val === undefined) return '<span class="rc-val">--</span>';
+            if (typeof val === 'boolean') {
+                const tier = val ? 'success' : 'error';
+                return `<span class="rc-val"><span class="rc-pill rc-pill-${tier}">${val ? 'YES' : 'NO'}</span></span>`;
+            }
+            if (pillKeys.has(key)) {
+                const tier = pillTier(key, val);
+                return `<span class="rc-val"><span class="rc-pill rc-pill-${tier}">${escHtml(String(val).toUpperCase())}</span></span>`;
+            }
+            if (key === 'valid') {
+                const tier = val ? 'success' : 'error';
+                return `<span class="rc-val"><span class="rc-pill rc-pill-${tier}">${val ? 'VALID' : 'INVALID'}</span></span>`;
+            }
+            if (scoreKeys.has(key) && typeof val === 'number') {
+                // progress is 0-100, other scores are 0-1
+                const normalized = key === 'progress' ? val / 100 : (val > 1 ? val / 100 : val);
+                const pct = Math.min(100, Math.max(0, normalized * 100));
+                const color = barColor(key, normalized);
+                const display = key === 'progress' ? `${val}%` : (val % 1 !== 0 ? val.toFixed(4) : val);
+                return `<span class="rc-val"><div class="rc-progress-wrap">` +
+                    `<div class="rc-progress-bar"><div class="rc-progress-fill" style="width:${pct}%;background:${color}"></div></div>` +
+                    `<span class="rc-progress-label" style="color:${color}">${display}</span></div></span>`;
+            }
+            if (monoKeys.has(key)) {
+                return `<span class="rc-val"><span class="rc-mono">${escHtml(String(val))}</span></span>`;
+            }
+            if (key === 'timestamp') {
+                return `<span class="rc-val"><span class="rc-ts">${escHtml(String(val))}</span></span>`;
+            }
+            if (Array.isArray(val) && val.every(v => typeof v !== 'object')) {
+                return `<span class="rc-val">${val.length ? escHtml(val.join(', ')) : '--'}</span>`;
+            }
+            if (typeof val === 'object') return '';
+            return `<span class="rc-val">${escHtml(String(val))}</span>`;
+        }
+
+        /* render a flat key/value row */
+        function renderRow(key, val) {
+            const label = fieldLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            const valHtml = renderVal(key, val);
+            if (!valHtml) return '';
+            return `<div class="rc-row"><span class="rc-key">${escHtml(label)}</span>${valHtml}</div>`;
+        }
+
+        /* group keys into semantic sections */
+        function classifyKey(key) {
+            if (['request_id','timestamp','client_id','mode','status','http_status','execution_mode'].includes(key)) return 'General';
+            if (['device_binding_id','device_id','platform','app_version','device_model','os_version','ip_address','public_key','has_active_device'].includes(key)) return 'Device';
+            if (['auth_session_id','auth_context_token','decision','reason_code','reason_message','next_step','valid','expires_in_seconds','attempts_remaining','challenge_id','challenge'].includes(key)) return 'Authentication';
+            if (['session_uri','polling_uri','instructions','msisdn'].includes(key)) return 'SIM';
+            if (['verdict','confidence','faces_detected','multiple_faces','type'].includes(key)) return 'Detection Result';
+            if (['job_id','task_id','task_state','filename','progress','requested_layers'].includes(key)) return 'Job Info';
+            if (['risk_score','overall_risk_score','risk_level','risk_color','classification','anomaly_count',
+                 'tamper_probability','ensemble_score','model_confidence','duration_sec','n_segments',
+                 'successful_layers','failed_layers','skipped_layers'].includes(key)) return 'Risk Analysis';
+            if (['error','detail','code','message','reason','supported_layers'].includes(key)) return 'Info';
+            if (['total_ms'].includes(key)) return 'Performance';
+            return 'Details';
+        }
+
+        /* build the status banner at the top */
+        function renderBanner(data) {
+            // Pick the most meaningful status field for the banner
+            let statusVal = data.status || data.decision || data.task_state || null;
+            let subtitle = '';
+
+            // For face/deepfake results, prefer verdict + confidence over generic status
+            if (data.result && data.result.verdict) {
+                statusVal = data.result.verdict;
+                if (data.result.confidence) subtitle = `Confidence: ${data.result.confidence}`;
+            }
+            // For doc tampering summary, show decision + risk level
+            if (data.summary && data.summary.decision) {
+                statusVal = data.summary.decision;
+                if (data.summary.risk_level) subtitle = `Risk: ${data.summary.risk_level}`;
+                if (data.summary.overall_risk_score != null) {
+                    const pct = (data.summary.overall_risk_score * 100).toFixed(1);
+                    subtitle += (subtitle ? ' | ' : '') + `Score: ${pct}%`;
+                }
+            }
+            // For voice results, show risk level
+            if (data.risk_level && data.ensemble_score != null) {
+                statusVal = data.risk_level;
+                subtitle = `Ensemble Score: ${data.ensemble_score.toFixed(3)}`;
+            }
+
+            if (!statusVal) return '';
+            const tier = pillTier('status', statusVal);
+            const icons = { success: '\u2713', error: '\u2717', warning: '\u25B2', info: '\u2192' };
+            const icon = icons[tier] || '\u2022';
+            const upperVal = String(statusVal).toUpperCase();
+            let html = `<div class="rc-banner rc-banner-${tier}"><span class="rc-banner-icon">${icon}</span><span>${escHtml(upperVal)}`;
+            if (subtitle) html += `<span style="font-weight:400;font-size:0.75rem;margin-left:10px;opacity:0.8">${escHtml(subtitle)}</span>`;
+            html += `</span></div>`;
+            return html;
+        }
+
+        /* keys whose children are all dynamic (map keys, not struct fields) */
+        const mapKeys = new Set(['models','class_probabilities','layer_durations_ms','exif']);
+
+        /* render a nested object as indented rows within a section */
+        function renderNestedObject(key, obj) {
+            const label = fieldLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            let html = `<div class="rc-section"><div class="rc-section-title">${escHtml(label)}</div>`;
+            if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
+                // For map-style keys (dynamic keys like model names, EXIF tags, etc.)
+                if (mapKeys.has(key)) {
+                    Object.keys(obj).forEach(mapKey => {
+                        const v = obj[mapKey];
+                        if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+                            // Each map entry is a sub-section (e.g. voice model "rawnet3")
+                            html += renderNestedObject(mapKey, v);
+                        } else {
+                            // Simple value in map (e.g. layer_durations_ms: {metadata: 120})
+                            html += renderRow(mapKey, v);
+                        }
+                    });
+                } else {
+                    const flatKeys = Object.keys(obj).filter(k => typeof obj[k] !== 'object' || obj[k] === null || Array.isArray(obj[k]));
+                    const nestedKeys = Object.keys(obj).filter(k => typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k]));
+                    if (flatKeys.length) {
+                        html += '<div class="rc-nested">';
+                        flatKeys.forEach(k => { html += renderRow(k, obj[k]); });
+                        html += '</div>';
+                    }
+                    nestedKeys.forEach(k => { html += renderNestedObject(k, obj[k]); });
+                }
+            } else {
+                html += `<div class="rc-nested"><div class="rc-row"><span class="rc-val">${escHtml(JSON.stringify(obj, null, 2))}</span></div></div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        /* render an array of objects as a table-like section */
+        function renderArraySection(key, arr) {
+            const label = fieldLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            let html = `<div class="rc-section"><div class="rc-section-title">${escHtml(label)}</div><div class="rc-nested">`;
+            arr.forEach((item, i) => {
+                if (typeof item === 'object' && item !== null) {
+                    if (i > 0) html += '<div class="rc-array-sep"></div>';
+                    Object.keys(item).forEach(k => { html += renderRow(k, item[k]); });
+                } else {
+                    html += renderRow(`#${i + 1}`, item);
+                }
+            });
+            html += '</div></div>';
+            return html;
+        }
+
+        /* main render: turn a JSON response into structured HTML */
+        function renderStructuredOutput(data) {
+            if (typeof data !== 'object' || data === null) {
+                return `<div class="rc-string-msg">${escHtml(String(data))}</div>`;
+            }
+            const hideKeys = new Set(['poll_url','sample_every']);
+            const keys = Object.keys(data).filter(k => !hideKeys.has(k));
+            const sections = {};
+            const objectKeys = [];
+            const arrayOfObjKeys = [];
+
+            keys.forEach(k => {
+                const val = data[k];
+                if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+                    objectKeys.push(k);
+                } else if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'object') {
+                    arrayOfObjKeys.push(k);
+                } else {
+                    const section = classifyKey(k);
+                    if (!sections[section]) sections[section] = [];
+                    sections[section].push(k);
+                }
+            });
+
+            let html = renderBanner(data);
+            // render flat sections
+            Object.keys(sections).forEach(section => {
+                html += `<div class="rc-section"><div class="rc-section-title">${escHtml(section)}</div>`;
+                sections[section].forEach(k => { html += renderRow(k, data[k]); });
+                html += '</div>';
+            });
+            // render nested objects
+            objectKeys.forEach(k => { html += renderNestedObject(k, data[k]); });
+            // render arrays of objects
+            arrayOfObjKeys.forEach(k => { html += renderArraySection(k, data[k]); });
+
+            return html;
+        }
+
         function setStatus(boxId, badgeId, outputId, payload, status = 'IDLE') {
             const box = document.getElementById(boxId);
             const badge = document.getElementById(badgeId);
             const output = document.getElementById(outputId);
             if (!box || !badge || !output) return;
             box.classList.remove('hidden');
-            output.textContent = typeof payload === 'object' ? JSON.stringify(payload, null, 2) : String(payload);
+            output.innerHTML = renderStructuredOutput(payload);
             badge.className = `badge badge-${status.toLowerCase()}`;
             badge.textContent = status;
         }
@@ -1515,31 +1990,36 @@
         // ══════════════════════════════════════════════════════════════════════════
         document.getElementById('btn-face-vid-submit').addEventListener('click', async () => {
             const file = document.getElementById('face-vid-file').files[0];
-            const sampleEvery = document.getElementById('face-vid-sample').value || 10;
             if (!file) { setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', 'No file selected.', 'ERROR'); return; }
             setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', 'Submitting...', 'PENDING');
             const form = new FormData();
             form.append('file', file);
             try {
-                const resp = await fetch(`/v1/face/video?sample_every=${sampleEvery}`, { method: 'POST', body: form });
+                const resp = await fetch('/v1/face/video', { method: 'POST', body: form });
                 const data = await resp.json();
                 if (!resp.ok) { setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, 'ERROR'); return; }
                 state.faceVid.jobId = data.job_id;
-                document.getElementById('btn-face-vid-poll').disabled = false;
-                setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, 'PENDING');
-            } catch (err) {
-                setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', `Error: ${err.message}`, 'ERROR');
-            }
-        });
-
-        document.getElementById('btn-face-vid-poll').addEventListener('click', async () => {
-            if (!state.faceVid.jobId) return;
-            setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', 'Polling...', 'PENDING');
-            try {
-                const resp = await fetch(`/v1/face/video/${state.faceVid.jobId}`);
-                const data = await resp.json();
-                const done = data.status === 'completed' || data.status === 'failed';
-                setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, done ? (data.status === 'completed' ? 'SUCCESS' : 'ERROR') : 'PENDING');
+                if (!data.job_id) { setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, 'SUCCESS'); return; }
+                setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', 'Processing video...', 'PENDING');
+                // Auto-poll until completed or failed
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const pr = await fetch(`/v1/face/video/${state.faceVid.jobId}`);
+                        const text = await pr.text();
+                        let pd;
+                        try { pd = JSON.parse(text); } catch { clearInterval(pollInterval); setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', `Error: invalid response from server`, 'ERROR'); return; }
+                        const done = pd.status === 'completed' || pd.status === 'failed' || pd.status === 'success';
+                        if (done) {
+                            clearInterval(pollInterval);
+                            setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', pd, pd.status === 'failed' ? 'ERROR' : 'SUCCESS');
+                        } else {
+                            setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', pd, 'PENDING');
+                        }
+                    } catch (pollErr) {
+                        clearInterval(pollInterval);
+                        setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', `Error: ${pollErr.message}`, 'ERROR');
+                    }
+                }, 3000);
             } catch (err) {
                 setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', `Error: ${err.message}`, 'ERROR');
             }

@@ -109,13 +109,31 @@ func (h *FaceHandler) handleSubmitVideo(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Synchronous result: upstream returned the full detection result directly.
+	if submitted.JobID == "" {
+		resp := map[string]interface{}{
+			"request_id": requestID,
+			"status":     submitted.Status,
+		}
+		if submitted.Input != nil {
+			resp["input"] = submitted.Input
+		}
+		if submitted.Result != nil {
+			resp["result"] = submitted.Result
+		}
+		if submitted.Meta != nil {
+			resp["meta"] = submitted.Meta
+		}
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+
+	// Async result: upstream queued a job for background processing.
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"request_id":   requestID,
-		"status":       submitted.Status,
-		"job_id":       submitted.JobID,
-		"filename":     submitted.Filename,
-		"sample_every": submitted.SampleEvery,
-		"poll_url":     "/v1/face/video/" + submitted.JobID,
+		"request_id": requestID,
+		"status":     submitted.Status,
+		"job_id":     submitted.JobID,
+		"filename":   submitted.Filename,
 	})
 }
 
