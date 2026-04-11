@@ -19,6 +19,105 @@ header-includes:
 
 \newpage
 
+# Product Identity
+
+**Product Name:** Timble
+
+**Tagline:** Multi-Factor Authentication and AI-Powered Deepfake Detection Platform
+
+**What Timble Is:** Timble is a unified API gateway that combines cryptographic device authentication, telecom-level SIM fraud detection, and real-time AI-powered deepfake detection into a single platform purpose-built for banking and financial institutions. It verifies not just *what you have* (device, SIM) but also *that your SIM hasn't been hijacked* (SIM swap check), *that the device is genuine* (device ID verification), and *who you are* (face liveness, voice authenticity, document integrity).
+
+**Core Capabilities:**
+
+| Capability | Description |
+|:-----------|:------------|
+| Device Authentication | ECDSA P-256 challenge-response using device secure enclave |
+| SIM Swap Detection | Telecom-level verification to detect recently swapped SIM cards |
+| Device ID Verification | Matches device identifier against registered binding to prevent cloning |
+| Face Image Detection | Tri-detector ensemble + 26 heuristic signals + CLIP + deepfake classifier |
+| Face Video Detection | Temporal frame-by-frame deepfake analysis with vote aggregation |
+| Voice Deepfake Detection | VARE (Voice Authenticity Risk Engine) for synthetic speech detection |
+| Document Tampering | AI-powered forgery and manipulation detection for identity documents |
+| Liveness Detection | Blink, mouth, and head-nod challenges to prevent replay attacks |
+| Hybrid Authentication | Parallel device + SIM verification in a single authentication flow |
+
+**Deployment:** Live production server at `3.108.166.176:8097` with Nginx TLS termination, PostgreSQL database, and distributed AI microservices.
+
+\newpage
+
+# Problem Statement
+
+## The Threat Landscape
+
+Financial institutions face a rapidly escalating convergence of identity fraud vectors that existing single-purpose solutions fail to address:
+
+1. **Deepfake-Driven Identity Fraud** --- Generative AI tools (Stable Diffusion, Midjourney, DALL-E, voice cloning services) have made it trivially easy to create photorealistic fake faces, synthetic voices, and forged documents. Traditional KYC processes that rely on photo matching, voice verification, or document inspection are increasingly defeated by AI-generated content that passes human review.
+
+2. **SIM Swap Account Takeover** --- Attackers port a victim's phone number to a new SIM card, intercepting OTP codes and SMS-based authentication. SIM swap fraud is one of the fastest-growing attack vectors in Indian banking, with losses running into crores annually. OTP-based authentication alone provides no protection against ported numbers.
+
+3. **Device Cloning and Spoofing** --- Sophisticated attackers clone device identifiers or use emulators to impersonate trusted devices, bypassing device-fingerprint-based security. Without cryptographic device binding, banks cannot distinguish a genuine device from a spoofed one.
+
+4. **Presentation Attacks** --- Photos, videos, or 3D masks held up to cameras during video KYC or selfie verification defeat basic face matching systems. Without liveness detection, any static or replayed media can pass as a live user.
+
+5. **Fragmented Security Stack** --- Banks currently integrate 4--6 separate vendors for authentication (OTP provider), device binding (SDK vendor), face matching (KYC vendor), liveness (separate SDK), document verification (OCR vendor), and fraud detection (rule engine). Each integration adds latency, cost, failure points, and compliance complexity.
+
+## The Gap
+
+No single platform today combines cryptographic device authentication, telecom SIM fraud detection, and multi-modal AI deepfake detection (face, voice, document) into a unified API. Banks are forced to stitch together disparate solutions, resulting in:
+
+- **Integration overhead** --- Multiple SDKs, APIs, and vendor contracts
+- **Latency accumulation** --- Sequential calls to 4--6 services per authentication
+- **Blind spots** --- SIM swap goes unchecked during face verification; document forgery is not validated during device auth
+- **Compliance burden** --- Audit trails scattered across multiple vendors
+
+## Timble's Answer
+
+Timble eliminates this fragmentation by providing a single API endpoint that orchestrates device cryptography, SIM verification, and AI deepfake detection in parallel --- delivering a comprehensive identity assurance verdict in a single call, with a unified audit trail for regulatory compliance.
+
+\newpage
+
+# What It Demonstrates
+
+## 1. Unified Multi-Factor Identity Assurance
+
+Timble demonstrates that cryptographic authentication, telecom verification, and AI-powered fraud detection can be combined into a single cohesive platform rather than requiring separate vendor integrations. A single `POST /v1/auth/start` call with `mode: "hybrid"` initiates device challenge, SIM swap check, and device ID verification simultaneously.
+
+## 2. Production-Grade AI Deepfake Detection
+
+The face detection pipeline demonstrates a multi-layered AI approach to deepfake detection:
+
+- **Tri-detector ensemble** (Dlib + RetinaFace + MediaPipe) ensures faces are detected regardless of angle, scale, or occlusion.
+- **26+ heuristic artifact signals** catch statistical anomalies that AI-generated images exhibit (noise uniformity, frequency artifacts, symmetry, 3D geometry).
+- **CLIP zero-shot classification** with 5-prompt ensembling provides robust AI vs Real scoring without task-specific training data.
+- **Dedicated deepfake classifier** with temperature-scaled calibration prevents overconfident false positives.
+- **Weighted consensus voting** requires agreement across multiple independent signals before flagging, dramatically reducing false positive rates compared to single-model approaches.
+
+## 3. Real-Time SIM Fraud Prevention
+
+Live integration with telecom SIM verification APIs demonstrates real-time detection of SIM swap attacks --- a capability that OTP-based systems fundamentally cannot provide. The system detects whether a phone number's SIM card has been recently ported before granting authentication.
+
+## 4. Temporal Video Deepfake Analysis
+
+The video analysis pipeline demonstrates frame-by-frame temporal deepfake detection using an Xception + LSTM architecture that captures both spatial artifacts (per-frame) and temporal inconsistencies (across frames) --- detecting deepfake videos that may pass single-frame analysis.
+
+## 5. Multi-Modal Fraud Coverage
+
+Timble demonstrates detection across all three identity fraud modalities:
+
+- **Visual** --- Face image and video deepfake detection with liveness challenges
+- **Audio** --- Voice cloning and synthetic speech detection via VARE
+- **Document** --- Tampering, manipulation, and forgery detection for identity documents
+
+## 6. Graceful Degradation Under Partial Failure
+
+The weighted consensus engine demonstrates production resilience: if any individual ML model (CLIP, deepfake classifier, or heuristics) becomes unavailable, the system automatically redistributes weights among available models and continues operating with reduced but functional detection capability.
+
+## 7. Zero-Framework High-Performance Architecture
+
+The Go backend demonstrates that a production banking API can be built using only the standard library (`net/http`), achieving minimal memory footprint, fast startup, and zero external dependency vulnerabilities --- critical for banking security compliance.
+
+\newpage
+
 # Innovation Involved
 
 Multi-factor authentication combining **Device-based ECDSA cryptographic challenge-response**, **SIM Swap detection**, **Device ID verification**, and **AI-powered deepfake detection** (face, voice, and document) into a single unified API platform for banking and financial institutions. The innovation lies in merging traditional authentication with **telecom-level SIM fraud detection**, **device binding verification**, and **real-time AI fraud detection** --- enabling banks to verify not just *what you have* (device, SIM) but also *that your SIM hasn't been hijacked* (SIM swap check), *that the device is genuine* (device ID verification), and *who you are* (face liveness, voice authenticity, document integrity) through a single API gateway.
@@ -330,6 +429,259 @@ Every authentication attempt (success or failure) is recorded in the `audit_logs
 9. **Environment-Based Configuration** --- All secrets, URLs, thresholds, model weights, and operational parameters are externalized via `.env` files, enabling seamless migration between development, staging, and production environments without code changes.
 
 10. **Pre-Check Optimization** --- The dual-model pre-check (CLIP + Deepfake classifier at 85% threshold) enables early exit for obvious AI-generated images, reducing processing time and compute costs for clear-cut cases.
+
+\newpage
+
+# Technology Architecture
+
+## System Architecture Overview
+
+```
++--------------------------------------------------------------+
+|                    Bank / Client Layer                        |
+|   +------------------+           +---------------------+     |
+|   |  Mobile App      |           |  Bank Backend       |     |
+|   |  (Device Signing |           |  Server             |     |
+|   |   + Camera)      |           |                     |     |
+|   +--------+---------+           +----------+----------+     |
++------------|---------------------------------|---------------+
+             | HTTPS                           | HTTPS
+             +--------------+------------------+
+                            |
++---------------------------+----------------------------------+
+|                    Nginx Reverse Proxy                        |
+|               (TLS Termination :443/:80)                     |
++---------------------------+----------------------------------+
+                            | HTTP :8097
++---------------------------+----------------------------------+
+|                    Timble API Server (Go 1.22)                |
+|          Authentication + Deepfake Detection Gateway         |
+|                                                              |
+|   +------------------+  +---------------+  +---------------+ |
+|   | Device Auth      |  | SIM Auth      |  | Deepfake      | |
+|   | (ECDSA P-256)    |  | (SIM Swap +   |  | Detection     | |
+|   |                  |  |  Device ID)   |  | Proxy Layer   | |
+|   +--------+---------+  +-------+-------+  +---+---+---+---+ |
++------------|-------------------|----------------|---|---|-----+
+             |                   |                |   |   |
+       +-----+             +----+          +-----+   |   +------+
+       |                   |               |         |          |
++------v------+  +---------v--------+  +---v---+  +-v----+  +--v-------+
+| PostgreSQL  |  | Telecom SIM API  |  | Face  |  |Voice |  |Document  |
+| Database    |  | (Sekura/XConnect)|  | Det.  |  |Det.  |  |Tampering |
+| :5432       |  | SIM Swap Check + |  | :8001 |  |:8096 |  |43.204.   |
+|             |  | Device ID Verify |  |       |  |      |  |41.9      |
++-------------+  +------------------+  +-------+  +------+  +----------+
+```
+
+## Backend Architecture (Go 1.22)
+
+| Component | Technology | Purpose |
+|:----------|:-----------|:--------|
+| HTTP Server | Go stdlib `net/http`, `ServeMux` | Zero-framework API server on port 8097 |
+| Database | PostgreSQL via `lib/pq` | Device bindings, auth sessions, tokens, audit logs |
+| Cryptography | Go `crypto/ecdsa`, `crypto/elliptic` | ECDSA P-256 key generation, challenge signing, signature verification |
+| Telecom Integration | HTTP client to Sekura API | OAuth token management, SIM swap check, device ID verification |
+| Deepfake Proxy | HTTP clients to 3 microservices | Proxies face, voice, and document detection requests |
+| Session Orchestration | In-memory store with mutex | Hybrid auth coordination with 60-second auto-cleanup |
+| Database Migrations | Embedded SQL, auto-applied on startup | Zero-downtime schema evolution |
+
+**Directory Structure:**
+
+```
+Fakeapp/
+  cmd/api/              -> HTTP server entry point
+  cmd/devsigner/        -> CLI tool for local challenge signing (dev mode)
+  internal/
+    config/             -> Environment variable configuration
+    crypto/             -> ECDSA P-256 key operations
+    handlers/           -> HTTP endpoint handlers
+    models/             -> Domain entities (device, auth session)
+    repository/         -> PostgreSQL query layer
+    service/            -> Business logic (device, auth)
+    deepfake/           -> HTTP clients for ML microservices
+    sim/                -> Telecom provider integration (Sekura)
+    orchestration/      -> Hybrid auth session coordination
+    middleware/         -> CORS middleware
+  migrations/           -> PostgreSQL schema files (auto-applied)
+  static/               -> Single-page web UI (index.html)
+  docs/                 -> API documentation, OpenAPI spec
+```
+
+## AI/ML Architecture (Python FastAPI)
+
+| Component | Technology | Purpose |
+|:----------|:-----------|:--------|
+| API Framework | FastAPI 0.110+, Uvicorn | Async ML inference server on port 8001 |
+| ML Framework | PyTorch 2.1+, TensorFlow/Keras | Model inference for face and video detection |
+| Vision Models | Dlib 19.24, RetinaFace, MediaPipe 0.10 | Tri-detector face detection ensemble |
+| Classification | CLIP ViT-Base-Patch32, HuggingFace Transformers 4.38+ | Zero-shot and binary deepfake classification |
+| Image Processing | OpenCV 4.8+, Pillow 10.0+, SciPy 1.11+ | Heuristic signal extraction (FFT, ELA, Laplacian) |
+| Video Processing | FFmpeg, OpenCV VideoCapture | Frame extraction, audio stripping, temporal analysis |
+| Video Model | Xception + LSTM (TensorFlow/Keras) | Temporal deepfake detection across video frames |
+
+**ML Model Pipeline:**
+
+```
+Input Image/Video
+       |
+       v
++------+------+
+| Stage 0:    |  CLIP + Deepfake on full image
+| Pre-Check   |  -> Early exit if both agree (85%+ confidence)
++------+------+
+       |
++------+------+
+| Stage 1:    |  EXIF metadata, AI tool signatures,
+| Metadata    |  ELA analysis, screenshot detection
++------+------+
+       |
++------+------+
+| Stage 2:    |  Dlib HOG (68 pts) + RetinaFace (multi-scale)
+| Tri-Detector|  + MediaPipe (468 pts + blendshapes)
+| Face Detect |  -> IoU deduplication (>0.65)
++------+------+
+       |
++------+------+   Per-face analysis:
+| Stage 3:    |   - 26+ heuristic signals (20% weight)
+| Full        |   - CLIP 5-prompt ensemble (45% weight)
+| Analysis    |   - Deepfake classifier (35% weight)
++------+------+
+       |
++------+------+
+| Stage 4:    |  Weighted consensus voting
+| Verdict     |  Consensus gate + hard overrides
+| Fusion      |  -> REAL | SUSPICIOUS | AI_GENERATED
++-------------+
+```
+
+## Database Schema
+
+| Table | Purpose | Key Columns |
+|:------|:--------|:------------|
+| `device_bindings` | Registered device public keys | client_id, user_ref, device_id, public_key_pem, status |
+| `auth_sessions` | Challenge-response tracking | device_binding_id, challenge, signature, expires_at |
+| `auth_context_tokens` | Issued authentication tokens | token, device_binding_id, expires_at |
+| `audit_logs` | Compliance audit trail | user_ref, action, decision, ip_address, device_id, timestamp |
+
+## External Integration Points
+
+| Service | Protocol | Purpose |
+|:--------|:---------|:--------|
+| Sekura/XConnect Telecom API | HTTPS + OAuth | SIM swap detection + device ID verification |
+| Face Detection (localhost:8001) | HTTP | AI-powered face deepfake detection |
+| Voice VARE (localhost:8096) | HTTP | Voice authenticity risk analysis |
+| Document Tampering (43.204.41.9) | HTTP | Document forgery detection |
+| PostgreSQL (localhost:5432) | TCP | Persistent storage for device bindings, sessions, audit |
+
+\newpage
+
+# Banking Use Cases
+
+## 1. Video KYC Deepfake Prevention
+
+**Scenario:** During digital customer onboarding, a fraudster submits an AI-generated face image or deepfake video instead of a genuine selfie to open a bank account under a stolen identity.
+
+**Timble's Role:** The face detection pipeline analyzes the submitted image/video through the tri-detector ensemble, 26+ heuristic signals, CLIP classification, and deepfake classifier. The weighted consensus engine flags AI-generated content with high confidence, preventing synthetic identity fraud at the onboarding stage.
+
+**API Flow:** `POST /v1/face/image` (selfie) or `POST /v1/face/video` (video KYC recording)
+
+## 2. SIM Swap Fraud Prevention for High-Value Transactions
+
+**Scenario:** An attacker ports a customer's phone number to a new SIM card (via social engineering at the telecom store), then intercepts OTP codes to authorize fund transfers or account changes.
+
+**Timble's Role:** Before processing any high-value transaction, the bank calls Timble's SIM authentication to verify whether the customer's SIM card has been recently swapped. If a swap is detected, the transaction is blocked and the customer is alerted through an alternate channel.
+
+**API Flow:** `POST /v1/auth/start` with `mode: "sim"` -> SIM swap check + device ID verification
+
+## 3. Secure Mobile Banking Authentication
+
+**Scenario:** A customer logs into their mobile banking app to check balances, transfer funds, or pay bills.
+
+**Timble's Role:** The mobile app uses ECDSA P-256 challenge-response authentication via the device's secure enclave. The private key never leaves the device hardware, making it immune to phishing, credential stuffing, and man-in-the-middle attacks. For high-risk operations (large transfers, beneficiary changes), hybrid mode adds SIM verification as a second factor.
+
+**API Flow:** `POST /v1/auth/start` with `mode: "device"` (standard) or `mode: "hybrid"` (high-risk)
+
+## 4. Voice Banking Fraud Prevention
+
+**Scenario:** An attacker uses AI voice cloning technology to impersonate a customer during a phone banking call, attempting to authorize transactions or change account details via IVR or agent-assisted channels.
+
+**Timble's Role:** The VARE (Voice Authenticity Risk Engine) analyzes the caller's audio in real time, detecting synthetic speech, voice cloning artifacts, and replay attacks. The ensemble scoring across multiple models (RawNet, SincNet, classifier, LLM reasoning) provides a risk-level verdict.
+
+**API Flow:** `POST /v1/voice/analyze?sync=true` with base64-encoded audio
+
+## 5. Document Forgery Detection for Loan Applications
+
+**Scenario:** A fraudster submits digitally tampered salary slips, bank statements, or identity documents (Aadhaar, PAN, passport) to obtain a loan under false pretenses.
+
+**Timble's Role:** The document tampering detection service analyzes submitted documents for manipulation artifacts, metadata inconsistencies, and pixel-level forgery indicators. Tampered documents are flagged before the loan is processed.
+
+**API Flow:** `POST /v1/deepfake/analyze` with base64-encoded document image
+
+## 6. Account Takeover Prevention
+
+**Scenario:** An attacker gains partial access to a customer's account (through data breaches, phishing, or social engineering) and attempts to change recovery details, add new beneficiaries, or initiate transfers.
+
+**Timble's Role:** Hybrid authentication (device + SIM) ensures that even if credentials are compromised, the attacker cannot authenticate without: (a) the customer's physical device with the cryptographic key in the secure enclave, AND (b) the customer's active SIM card passing the swap check. Both factors must pass simultaneously.
+
+**API Flow:** `POST /v1/auth/start` with `mode: "hybrid"` -> parallel device challenge + SIM verification
+
+## 7. Insurance Claim Fraud Detection
+
+**Scenario:** A fraudster submits AI-generated photos of fabricated damage (vehicle accidents, property damage, medical reports) or forged supporting documents to file fraudulent insurance claims.
+
+**Timble's Role:** Face detection identifies AI-generated photos, document tampering detection flags forged medical reports and repair estimates, and voice detection can verify the claimant's identity during recorded statements.
+
+**API Flow:** Combination of `POST /v1/face/image`, `POST /v1/deepfake/analyze`, and `POST /v1/voice/analyze`
+
+## 8. Regulatory Compliance (RBI/PSD2/FFIEC)
+
+**Scenario:** Banks must comply with multi-factor authentication mandates from RBI (India), PSD2 Strong Customer Authentication (Europe), or FFIEC (US) requirements.
+
+**Timble's Role:** A single platform provides all required authentication factors --- possession (device with cryptographic key), inherence (face liveness, voice biometrics), and network-level verification (SIM authentication) --- with a unified audit trail stored in PostgreSQL for regulatory reporting and forensic investigation.
+
+**API Flow:** Full audit trail via `audit_logs` table with user_ref, action, decision, IP, device_id, timestamp
+
+\newpage
+
+# Future Roadmap
+
+## Phase 1: Enhanced Detection Capabilities
+
+| Feature | Description |
+|:--------|:------------|
+| **Lip-Sync Deepfake Detection** | Detect audio-visual mismatch in video calls where the lip movements don't match the spoken words --- a common artifact in real-time deepfake video attacks |
+| **Age and Gender Verification** | Cross-reference detected face attributes against KYC records to detect identity mismatches during onboarding |
+| **Multi-Language Voice Detection** | Extend VARE to support regional Indian languages (Hindi, Tamil, Telugu, Bengali) for phone banking fraud detection |
+| **Real-Time Video Stream Analysis** | Analyze live video feeds during video KYC calls, not just recorded uploads, for instant deepfake detection |
+
+## Phase 2: Platform Expansion
+
+| Feature | Description |
+|:--------|:------------|
+| **FIDO2/WebAuthn Support** | Add passwordless authentication via FIDO2 hardware keys and platform authenticators alongside existing ECDSA device binding |
+| **Biometric Template Matching** | On-device facial feature extraction and server-side template comparison for continuous authentication without storing raw biometric data |
+| **Behavioral Biometrics** | Analyze typing patterns, touch pressure, swipe gestures, and device motion during mobile banking sessions for passive continuous authentication |
+| **Multi-Bank SaaS Dashboard** | Web-based admin portal for banks to monitor authentication events, detection rates, fraud trends, and model performance across their customer base |
+
+## Phase 3: Intelligence and Analytics
+
+| Feature | Description |
+|:--------|:------------|
+| **Fraud Pattern Analytics** | ML-driven analysis of authentication and detection events to identify emerging fraud patterns, geographic hotspots, and attack campaigns before they scale |
+| **Risk Scoring Engine** | Dynamic per-user risk scores based on authentication history, device changes, location anomalies, and detected fraud attempts --- enabling adaptive authentication that increases friction only for high-risk sessions |
+| **Model Retraining Pipeline** | Automated feedback loop: flagged false positives/negatives from production are used to retrain and fine-tune detection models, keeping pace with evolving deepfake generators |
+| **Threat Intelligence Feed** | Aggregate anonymized fraud signals across all bank clients to provide early warning of new attack techniques and deepfake generator signatures |
+
+## Phase 4: Scale and Enterprise Readiness
+
+| Feature | Description |
+|:--------|:------------|
+| **Kubernetes Deployment** | Containerized deployment with Helm charts, horizontal pod autoscaling, and GPU node pools for ML inference |
+| **Multi-Region Architecture** | Regional API servers with geo-routed traffic, local PostgreSQL replicas, and centralized model serving for low-latency global authentication |
+| **gRPC Internal Communication** | Replace HTTP-based inter-service communication with gRPC for reduced latency and schema enforcement between Go gateway and Python ML services |
+| **Webhook and Event Streaming** | Real-time webhook notifications and Kafka-based event streaming for bank backends to receive authentication and detection events without polling |
+| **SOC 2 Type II and ISO 27001** | Enterprise compliance certifications for security-sensitive banking deployments |
 
 \newpage
 

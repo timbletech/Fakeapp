@@ -137,7 +137,6 @@ func main() {
 
 	// Serve static files for demo
 	fs := http.FileServer(http.Dir("static"))
-	mux.Handle("/demo/", http.StripPrefix("/demo/", fs))
 	mux.Handle("/", http.StripPrefix("/", fs))
 	// ----------------------------------
 
