@@ -16,9 +16,10 @@ type Config struct {
 	DevPrivateKey          string
 	ChallengeExpirySeconds int
 	AuthTokenExpirySeconds int
-	DeepfakeServiceURL     string
-	FaceServiceURL         string
-	VoiceServiceURL        string
+	DeviceApprovalExpirySeconds int
+	DeepfakeServiceURL         string
+	FaceServiceURL             string
+	VoiceServiceURL            string
 }
 
 func LoadConfig() *Config {
@@ -35,6 +36,11 @@ func LoadConfig() *Config {
 		authTokenExpiry = 300
 	}
 
+	deviceApprovalExpiry, err := strconv.Atoi(getEnv("DEVICE_APPROVAL_EXPIRY_SECONDS", "300"))
+	if err != nil {
+		deviceApprovalExpiry = 300
+	}
+
 	cfg := &Config{
 		DBDSN:                  getEnv("DB_DSN", "postgres://user:password@localhost:5432/timble?sslmode=disable"),
 		ServerHost:             getEnv("SERVER_HOST", "0.0.0.0"),
@@ -42,8 +48,9 @@ func LoadConfig() *Config {
 		DevMode:                devMode,
 		DevPrivateKey:          getEnv("DEV_PRIVATE_KEY", ""),
 		ChallengeExpirySeconds: challengeExpiry,
-		AuthTokenExpirySeconds: authTokenExpiry,
-		DeepfakeServiceURL:     getEnv("DEEPFAKE_SERVICE_URL", "http://localhost:8000"),
+		AuthTokenExpirySeconds:     authTokenExpiry,
+		DeviceApprovalExpirySeconds: deviceApprovalExpiry,
+		DeepfakeServiceURL:         getEnv("DEEPFAKE_SERVICE_URL", "http://localhost:8000"),
 		FaceServiceURL:         getEnv("FACE_SERVICE_URL", "http://localhost:8001"),
 		VoiceServiceURL:        getEnv("VOICE_SERVICE_URL", "http://localhost:8002"),
 	}

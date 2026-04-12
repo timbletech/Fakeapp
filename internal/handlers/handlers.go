@@ -19,11 +19,12 @@ import (
 )
 
 type API struct {
-	deviceService   *service.DeviceService
-	authService     *service.AuthService
-	simAuthService  SimAuthOrchestrator
-	cfg             *config.Config
-	orchestrationDB *orchestration.Store
+	deviceService       *service.DeviceService
+	authService         *service.AuthService
+	deviceVerifyService *service.DeviceVerifyService
+	simAuthService      SimAuthOrchestrator
+	cfg                 *config.Config
+	orchestrationDB     *orchestration.Store
 }
 
 type SimAuthOrchestrator interface {
@@ -31,13 +32,14 @@ type SimAuthOrchestrator interface {
 	CompleteAuth(authSessionID string) (*simservice.AuthResult, *simservice.SessionError)
 }
 
-func NewAPI(ds *service.DeviceService, as *service.AuthService, simAS SimAuthOrchestrator, cfg *config.Config, orchestrationDB *orchestration.Store) *API {
+func NewAPI(ds *service.DeviceService, as *service.AuthService, dvs *service.DeviceVerifyService, simAS SimAuthOrchestrator, cfg *config.Config, orchestrationDB *orchestration.Store) *API {
 	return &API{
-		deviceService:   ds,
-		authService:     as,
-		simAuthService:  simAS,
-		cfg:             cfg,
-		orchestrationDB: orchestrationDB,
+		deviceService:       ds,
+		authService:         as,
+		deviceVerifyService: dvs,
+		simAuthService:      simAS,
+		cfg:                 cfg,
+		orchestrationDB:     orchestrationDB,
 	}
 }
 
@@ -52,6 +54,12 @@ func (api *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/auth/verify", api.handleAuthVerify)
 	mux.HandleFunc("POST /v1/hybrid/start", api.handleHybridStart)
 	mux.HandleFunc("POST /v1/hybrid/complete", api.handleHybridComplete)
+
+	// Device verification for unknown devices
+	mux.HandleFunc("POST /v1/auth/device-verify", api.handleDeviceVerify)
+	mux.HandleFunc("POST /v1/auth/device-verify/respond", api.handleDeviceVerifyRespond)
+	mux.HandleFunc("POST /v1/auth/device-verify/status", api.handleDeviceVerifyStatus)
+	mux.HandleFunc("GET /v1/auth/device-verify/pending", api.handleDeviceVerifyPending)
 }
 
 func (api *API) handleDeviceRegister(w http.ResponseWriter, r *http.Request) {
@@ -202,6 +210,82 @@ func (api *API) handleHybridComplete(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, status, resp)
 }
 
+// --- Device Verification (unknown device approval flow) ---
+
+func (api *API) handleDeviceVerify(w http.ResponseWriter, r *http.Request) {
+	requestID := "req_" + uuid.New().String()
+	var req models.DeviceVerifyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.writeError(w, http.StatusBadRequest, "invalid_request", err.Error(), requestID)
+		return
+	}
+
+	resp, err := api.deviceVerifyService.InitiateVerification(&req)
+	if err != nil {
+		api.writeError(w, http.StatusBadRequest, "validation_error", err.Error(), requestID)
+		return
+	}
+
+	resp.RequestID = requestID
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (api *API) handleDeviceVerifyRespond(w http.ResponseWriter, r *http.Request) {
+	requestID := "req_" + uuid.New().String()
+	var req models.DeviceApprovalActionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.writeError(w, http.StatusBadRequest, "invalid_request", err.Error(), requestID)
+		return
+	}
+
+	resp, err := api.deviceVerifyService.RespondToApproval(&req)
+	if err != nil {
+		api.writeError(w, http.StatusBadRequest, "validation_error", err.Error(), requestID)
+		return
+	}
+
+	resp.RequestID = requestID
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (api *API) handleDeviceVerifyStatus(w http.ResponseWriter, r *http.Request) {
+	requestID := "req_" + uuid.New().String()
+	var req models.DeviceApprovalStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		api.writeError(w, http.StatusBadRequest, "invalid_request", err.Error(), requestID)
+		return
+	}
+
+	resp, err := api.deviceVerifyService.CheckApprovalStatus(&req)
+	if err != nil {
+		api.writeError(w, http.StatusBadRequest, "validation_error", err.Error(), requestID)
+		return
+	}
+
+	resp.RequestID = requestID
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (api *API) handleDeviceVerifyPending(w http.ResponseWriter, r *http.Request) {
+	requestID := "req_" + uuid.New().String()
+	clientID := r.URL.Query().Get("client_id")
+	userRef := r.URL.Query().Get("user_ref")
+
+	if clientID == "" || userRef == "" {
+		api.writeError(w, http.StatusBadRequest, "validation_error", "missing client_id or user_ref query parameter", requestID)
+		return
+	}
+
+	resp, err := api.deviceVerifyService.GetPendingApprovals(clientID, userRef)
+	if err != nil {
+		api.writeError(w, http.StatusInternalServerError, "internal_error", err.Error(), requestID)
+		return
+	}
+
+	resp.RequestID = requestID
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func (api *API) handleAuthVerify(w http.ResponseWriter, r *http.Request) {
 	requestID := "req_" + uuid.New().String()
 	var req models.VerifyTokenRequest
@@ -255,6 +339,27 @@ func (api *API) processAuthStart(req *models.StartAuthRequest) (*models.StartAut
 		resp, err := api.authService.StartAuth(req)
 		if err != nil {
 			return nil, http.StatusInternalServerError, err
+		}
+		// If device is unknown, auto-trigger the device verification flow
+		if resp.Status == "DEVICE_NOT_MATCH" {
+			verifyReq := &models.DeviceVerifyRequest{
+				ClientID:   req.ClientID,
+				UserRef:    req.UserRef,
+				DeviceInfo: req.DeviceInfo,
+				PublicKey:  req.PublicKey,
+			}
+			verifyResp, verifyErr := api.deviceVerifyService.InitiateVerification(verifyReq)
+			if verifyErr != nil {
+				return nil, http.StatusBadRequest, verifyErr
+			}
+			return &models.StartAuthResponse{
+				Timestamp:     verifyResp.Timestamp,
+				ClientID:      req.ClientID,
+				Mode:          "device",
+				AuthSessionID: verifyResp.ApprovalID,
+				NextStep:      "DEVICE_APPROVAL_REQUIRED",
+				Status:        verifyResp.Status,
+			}, http.StatusAccepted, nil
 		}
 		resp.Mode = "device"
 		return resp, http.StatusOK, nil

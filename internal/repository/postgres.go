@@ -24,6 +24,11 @@ type Repository interface {
 	GetAuthContextToken(token string) (*models.AuthContextToken, error)
 
 	LogAudit(l *models.AuditLog) error
+
+	CreateDeviceApprovalRequest(r *models.DeviceApprovalRequest) error
+	GetDeviceApprovalRequest(id string) (*models.DeviceApprovalRequest, error)
+	UpdateDeviceApprovalStatus(id string, status string, resolvedBy string) error
+	GetPendingApprovals(clientID string, userRef string) ([]*models.DeviceApprovalRequest, error)
 }
 
 type PostgresRepo struct {
@@ -218,8 +223,83 @@ func (r *PostgresRepo) GetAuthContextToken(token string) (*models.AuthContextTok
 }
 
 func (r *PostgresRepo) LogAudit(l *models.AuditLog) error {
-	query := `INSERT INTO audit_logs (user_ref, action, decision, ip_address, device_id, created_at) 
+	query := `INSERT INTO audit_logs (user_ref, action, decision, ip_address, device_id, created_at)
 			  VALUES ($1, $2, $3, $4, $5, $6)`
 	_, err := r.db.Exec(query, nullString(l.UserRef), l.Action, l.Decision, nullString(l.IPAddress), nullString(l.DeviceID), time.Now())
 	return err
+}
+
+func (r *PostgresRepo) CreateDeviceApprovalRequest(req *models.DeviceApprovalRequest) error {
+	query := `INSERT INTO device_approval_requests
+		(id, client_id, user_ref, requesting_device_id, requesting_device_info, requesting_public_key, main_device_binding_id, status, created_at, expires_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+	_, err := r.db.Exec(query,
+		req.ID, req.ClientID, req.UserRef, req.RequestingDeviceID,
+		nullString(req.RequestingDeviceInfo), nullString(req.RequestingPublicKey),
+		req.MainDeviceBindingID, req.Status, req.CreatedAt, req.ExpiresAt)
+	return err
+}
+
+func (r *PostgresRepo) GetDeviceApprovalRequest(id string) (*models.DeviceApprovalRequest, error) {
+	a := &models.DeviceApprovalRequest{}
+	var deviceInfo, publicKey, resolvedBy sql.NullString
+	var resolvedAt sql.NullTime
+	query := `SELECT id, client_id, user_ref, requesting_device_id, requesting_device_info,
+		requesting_public_key, main_device_binding_id, status, created_at, expires_at, resolved_at, resolved_by
+		FROM device_approval_requests WHERE id = $1`
+	err := r.db.QueryRow(query, id).Scan(
+		&a.ID, &a.ClientID, &a.UserRef, &a.RequestingDeviceID, &deviceInfo,
+		&publicKey, &a.MainDeviceBindingID, &a.Status, &a.CreatedAt, &a.ExpiresAt,
+		&resolvedAt, &resolvedBy)
+	if err != nil {
+		return nil, err
+	}
+	a.RequestingDeviceInfo = fromNullString(deviceInfo)
+	a.RequestingPublicKey = fromNullString(publicKey)
+	a.ResolvedBy = fromNullString(resolvedBy)
+	if resolvedAt.Valid {
+		a.ResolvedAt = &resolvedAt.Time
+	}
+	return a, nil
+}
+
+func (r *PostgresRepo) UpdateDeviceApprovalStatus(id string, status string, resolvedBy string) error {
+	query := `UPDATE device_approval_requests SET status = $1, resolved_at = NOW(), resolved_by = $2 WHERE id = $3`
+	_, err := r.db.Exec(query, status, nullString(resolvedBy), id)
+	return err
+}
+
+func (r *PostgresRepo) GetPendingApprovals(clientID string, userRef string) ([]*models.DeviceApprovalRequest, error) {
+	query := `SELECT id, client_id, user_ref, requesting_device_id, requesting_device_info,
+		requesting_public_key, main_device_binding_id, status, created_at, expires_at, resolved_at, resolved_by
+		FROM device_approval_requests
+		WHERE client_id = $1 AND user_ref = $2 AND status = 'PENDING' AND expires_at > NOW()
+		ORDER BY created_at DESC`
+	rows, err := r.db.Query(query, clientID, userRef)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*models.DeviceApprovalRequest
+	for rows.Next() {
+		a := &models.DeviceApprovalRequest{}
+		var deviceInfo, publicKey, resolvedBy sql.NullString
+		var resolvedAt sql.NullTime
+		err := rows.Scan(
+			&a.ID, &a.ClientID, &a.UserRef, &a.RequestingDeviceID, &deviceInfo,
+			&publicKey, &a.MainDeviceBindingID, &a.Status, &a.CreatedAt, &a.ExpiresAt,
+			&resolvedAt, &resolvedBy)
+		if err != nil {
+			return nil, err
+		}
+		a.RequestingDeviceInfo = fromNullString(deviceInfo)
+		a.RequestingPublicKey = fromNullString(publicKey)
+		a.ResolvedBy = fromNullString(resolvedBy)
+		if resolvedAt.Valid {
+			a.ResolvedAt = &resolvedAt.Time
+		}
+		results = append(results, a)
+	}
+	return results, nil
 }

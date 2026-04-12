@@ -81,6 +81,7 @@ type StartAuthRequest struct {
 	MSISDN          string     `json:"msisdn,omitempty"`
 	DeviceBindingID string     `json:"device_binding_id"`
 	DeviceInfo      DeviceInfo `json:"device_info"`
+	PublicKey       string     `json:"public_key,omitempty"`
 }
 
 type DeviceChallenge struct {
@@ -193,6 +194,86 @@ type UpdateDeviceResponse struct {
 	ClientID        string `json:"client_id"`
 	DeviceBindingID string `json:"device_binding_id"`
 	Status          string `json:"status"`
+}
+
+// --- Device Approval (new-device verification) ---
+
+// DB model
+type DeviceApprovalRequest struct {
+	ID                     string
+	ClientID               string
+	UserRef                string
+	RequestingDeviceID     string
+	RequestingDeviceInfo   string // JSON blob
+	RequestingPublicKey    string
+	MainDeviceBindingID    string
+	Status                 string // PENDING | APPROVED | DENIED | EXPIRED
+	CreatedAt              time.Time
+	ExpiresAt              time.Time
+	ResolvedAt             *time.Time
+	ResolvedBy             string
+}
+
+// POST /v1/auth/device-verify  — called by the new (unknown) device
+type DeviceVerifyRequest struct {
+	ClientID   string     `json:"client_id"`
+	UserRef    string     `json:"user_ref"`
+	DeviceInfo DeviceInfo `json:"device_info"`
+	PublicKey  string     `json:"public_key"`
+}
+
+type DeviceVerifyResponse struct {
+	RequestID  string `json:"request_id"`
+	Timestamp  string `json:"timestamp"`
+	ApprovalID string `json:"approval_id"`
+	Status     string `json:"status"`  // PENDING | KNOWN_DEVICE
+	Message    string `json:"message"`
+}
+
+// POST /v1/auth/device-verify/respond  — called by the main (trusted) device
+type DeviceApprovalActionRequest struct {
+	ClientID   string `json:"client_id"`
+	UserRef    string `json:"user_ref"`
+	ApprovalID string `json:"approval_id"`
+	Action     string `json:"action"` // approve | deny
+}
+
+type DeviceApprovalActionResponse struct {
+	RequestID string `json:"request_id"`
+	Timestamp string `json:"timestamp"`
+	Status    string `json:"status"` // APPROVED | DENIED
+	Message   string `json:"message"`
+}
+
+// POST /v1/auth/device-verify/status  — polled by the new device
+type DeviceApprovalStatusRequest struct {
+	ClientID   string `json:"client_id"`
+	ApprovalID string `json:"approval_id"`
+}
+
+type DeviceApprovalStatusResponse struct {
+	RequestID        string `json:"request_id"`
+	Timestamp        string `json:"timestamp"`
+	ApprovalID       string `json:"approval_id"`
+	Status           string `json:"status"` // PENDING | APPROVED | DENIED | EXPIRED
+	DeviceBindingID  string `json:"device_binding_id,omitempty"`
+	AuthContextToken string `json:"auth_context_token,omitempty"`
+	ExpiresInSeconds int    `json:"expires_in_seconds,omitempty"`
+	Message          string `json:"message,omitempty"`
+}
+
+// GET /v1/auth/device-verify/pending  — fetched by the main device to see pending requests
+type PendingApprovalItem struct {
+	ApprovalID       string     `json:"approval_id"`
+	RequestingDevice DeviceInfo `json:"requesting_device"`
+	CreatedAt        string     `json:"created_at"`
+	ExpiresAt        string     `json:"expires_at"`
+}
+
+type PendingApprovalsResponse struct {
+	RequestID string                `json:"request_id"`
+	Timestamp string                `json:"timestamp"`
+	Pending   []PendingApprovalItem `json:"pending"`
 }
 
 // ErrorResponse is the standard error envelope for all error responses.

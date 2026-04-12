@@ -68,12 +68,29 @@ func main() {
 		log.Printf("Warning: Migration 003 failed (might already be applied): %v", err)
 	}
 
+	migrationBytes4, err := os.ReadFile("migrations/004_device_approval_requests.sql")
+	if err != nil {
+		log.Fatalf("Failed to read migrations file 004: %v", err)
+	}
+	if _, err := db.Exec(string(migrationBytes4)); err != nil {
+		log.Printf("Warning: Migration 004 failed (might already be applied): %v", err)
+	}
+
+	migrationBytes5, err := os.ReadFile("migrations/005_add_public_key_to_approval.sql")
+	if err != nil {
+		log.Fatalf("Failed to read migrations file 005: %v", err)
+	}
+	if _, err := db.Exec(string(migrationBytes5)); err != nil {
+		log.Printf("Warning: Migration 005 failed (might already be applied): %v", err)
+	}
+
 	log.Println("Database migrations applied successfully.")
 
 	repo := repository.NewPostgresRepo(db)
 
 	deviceSvc := service.NewDeviceService(repo)
 	authSvc := service.NewAuthService(repo, cfg)
+	deviceVerifySvc := service.NewDeviceVerifyService(repo, cfg)
 
 	// --- Initialize Sim/Timble API ---
 	simCfg, err := simconfig.Load()
@@ -102,7 +119,7 @@ func main() {
 	simAuthHandler := simapi.NewAuthHandler(simAuthService)
 
 	orchestrationStore := orchestration.NewStore()
-	api := handlers.NewAPI(deviceSvc, authSvc, simAuthService, cfg, orchestrationStore)
+	api := handlers.NewAPI(deviceSvc, authSvc, deviceVerifySvc, simAuthService, cfg, orchestrationStore)
 
 	deepfakeClient := deepfake.NewClient(cfg.DeepfakeServiceURL)
 	faceClient := deepfake.NewClient(cfg.FaceServiceURL)

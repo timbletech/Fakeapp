@@ -6,6 +6,7 @@ It supports:
 - Device-only cryptographic challenge-response (ECDSA)
 - SIM-only verification through XConnect/Sekura integration
 - Hybrid mode (SIM verification + device challenge-sign)
+- New device approval flow (unknown device verification via trusted device)
 
 ## Features
 
@@ -13,6 +14,7 @@ It supports:
 - **Cryptographically Secure**: 32-byte randomized challenges signed with ECDSA (P-256).
 - **PostgreSQL Database Storage**: Scalable schemas with indices covering user references and binding lookups. fully ready for UUID primary keys.
 - **Client-Level Mode Policy**: Configure default and per-client auth mode (`device`, `sim`, `hybrid`).
+- **New Device Verification**: When an unknown device attempts login, the system auto-triggers an approval request to the user's trusted device. Once approved, the new device is registered and can proceed with normal auth.
 
 ## API Documentation
 
@@ -23,16 +25,18 @@ It supports:
 
 ```text
 cmd/
-  api/      # Main HTTP server
-  devsigner/# CLI for local simulation of device signing
+  api/           # Main HTTP server
+  devsigner/     # CLI for local simulation of device signing
 internal/
-  config/   # Environment logic
-  crypto/   # ECDSA validation and generator utilities
-  handlers/ # REST API endpoints layer
-  models/   # Core domain entities
-  repository/# DB queries
-  service/  # Complex business rules (auth limits, validations)
- migrations/# .sql files
+  config/        # Environment logic
+  crypto/        # ECDSA validation and generator utilities
+  handlers/      # REST API endpoints layer
+  models/        # Core domain entities
+  orchestration/ # In-memory session store for multi-mode auth
+  repository/    # DB queries
+  service/       # Business rules (auth, device, device-verify)
+  sim/           # SIM-only authentication (Sekura/XConnect)
+migrations/      # .sql files (auto-applied on startup)
 ```
 
 ## Running the Server
@@ -254,6 +258,75 @@ curl -s -G "$API_BASE/v1/device/check" \
   --data-urlencode "client_id=$CLIENT_ID" \
   --data-urlencode "user_ref=$USER_REF" \
   --data-urlencode "device_id=$DEVICE_ID" | jq .
+
+# ── New Device Verification Flow ──────────────────────────────
+# When an unknown device calls /v1/auth/start, the server auto-triggers
+# the approval flow and returns next_step=DEVICE_APPROVAL_REQUIRED.
+
+NEW_DEVICE_ID="dev_new_999"
+NEW_PUBLIC_KEY="LS0tLS1CRUd..."  # base64 ECDSA public key of new device
+
+# 16) Unknown device attempts auth start (auto-triggers approval)
+APPROVAL_RESP=$(curl -s -X POST "$API_BASE/v1/auth/start" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"client_id\": \"$CLIENT_ID\",
+    \"user_ref\": \"$USER_REF\",
+    \"action\": \"login\",
+    \"mode\": \"device\",
+    \"device_binding_id\": \"$BINDING_ID\",
+    \"device_info\": {
+      \"device_id\": \"$NEW_DEVICE_ID\",
+      \"platform\": \"android\",
+      \"device_model\": \"Pixel 8\",
+      \"os_version\": \"14\"
+    },
+    \"public_key\": \"$NEW_PUBLIC_KEY\"
+  }")
+echo "$APPROVAL_RESP" | jq .
+APPROVAL_ID=$(echo "$APPROVAL_RESP" | jq -r '.auth_session_id')
+# Response: 202, next_step=DEVICE_APPROVAL_REQUIRED, auth_session_id=appr_...
+
+# 17) Or call device-verify directly (alternative to auto-trigger)
+curl -s -X POST "$API_BASE/v1/auth/device-verify" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"client_id\": \"$CLIENT_ID\",
+    \"user_ref\": \"$USER_REF\",
+    \"device_info\": {
+      \"device_id\": \"$NEW_DEVICE_ID\",
+      \"platform\": \"android\",
+      \"device_model\": \"Pixel 8\",
+      \"os_version\": \"14\"
+    },
+    \"public_key\": \"$NEW_PUBLIC_KEY\"
+  }" | jq .
+
+# 18) Main device polls for pending approvals
+curl -s -G "$API_BASE/v1/auth/device-verify/pending" \
+  --data-urlencode "client_id=$CLIENT_ID" \
+  --data-urlencode "user_ref=$USER_REF" | jq .
+
+# 19) Main device approves the new device
+curl -s -X POST "$API_BASE/v1/auth/device-verify/respond" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"client_id\": \"$CLIENT_ID\",
+    \"user_ref\": \"$USER_REF\",
+    \"approval_id\": \"$APPROVAL_ID\",
+    \"action\": \"approve\"
+  }" | jq .
+
+# 20) New device polls for approval status
+curl -s -X POST "$API_BASE/v1/auth/device-verify/status" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"client_id\": \"$CLIENT_ID\",
+    \"approval_id\": \"$APPROVAL_ID\"
+  }" | jq .
+# Response: status=APPROVED, message="Device approved — proceed with login"
+
+# 21) New device can now call /v1/auth/start normally (device is now trusted)
 ```
 
 ## Production Differences

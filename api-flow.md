@@ -141,3 +141,59 @@ sequenceDiagram
         Timble-->>BankSrv: 202 decision=PENDING, poll again
     end
 ```
+
+---
+
+## Flow 4 — New Device Verification (Unknown Device Approval)
+
+When a user tries to authenticate from a new/unknown device, the system auto-triggers an approval request sent to their existing trusted device. The trusted device owner approves or denies the request. On approval, the new device is registered and can proceed with normal authentication.
+
+```mermaid
+sequenceDiagram
+    participant NewDev as New Device
+    participant Timble as Timble API
+    participant DB as PostgreSQL
+    participant MainDev as Trusted Device
+
+    Note over NewDev,Timble: New device attempts login
+    NewDev->>Timble: POST /v1/auth/start
+    Note right of Timble: mode=device, device_id (unknown), public_key
+    Timble->>DB: Check device binding
+    DB-->>Timble: DEVICE_NOT_MATCH
+
+    Note over Timble,DB: Auto-trigger approval flow
+    Timble->>DB: Create device_approval_request (PENDING)
+    Timble-->>NewDev: 202 next_step=DEVICE_APPROVAL_REQUIRED, approval_id
+
+    Note over MainDev,Timble: Trusted device polls for pending requests
+    loop Poll pending
+        MainDev->>Timble: GET /v1/auth/device-verify/pending
+        Note right of Timble: client_id, user_ref
+        Timble->>DB: Fetch PENDING approvals
+        Timble-->>MainDev: [{approval_id, requesting_device_info}]
+    end
+
+    MainDev->>Timble: POST /v1/auth/device-verify/respond
+    Note right of Timble: approval_id, action=approve
+    Timble->>DB: Update status to APPROVED
+    Timble->>DB: Auto-register new device with public_key
+    Timble-->>MainDev: status=APPROVED
+
+    Note over NewDev,Timble: New device polls for result
+    loop Poll status
+        NewDev->>Timble: POST /v1/auth/device-verify/status
+        Note right of Timble: client_id, approval_id
+        Timble-->>NewDev: status=PENDING / APPROVED / DENIED
+    end
+
+    Note over NewDev,Timble: Device now trusted - normal auth
+    NewDev->>Timble: POST /v1/auth/start
+    Note right of Timble: mode=device (now recognized)
+    Timble-->>NewDev: auth_session_id, challenge
+
+    NewDev->>NewDev: Sign challenge with EC private key
+
+    NewDev->>Timble: POST /v1/auth/complete
+    Note right of Timble: auth_session_id, device_signature
+    Timble-->>NewDev: decision=ALLOW, auth_context_token
+```
