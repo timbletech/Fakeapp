@@ -90,13 +90,14 @@ func (c *VoiceClient) AnalyzeSync(data string, layers []string) (*VoiceResultRes
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("voice: analyze failed (%d): %s", resp.StatusCode, string(body))
+	}
+
 	var out VoiceResultResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, fmt.Errorf("voice: decode response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("voice: analyze failed (%d): %v", resp.StatusCode, out)
 	}
 
 	return &out, nil

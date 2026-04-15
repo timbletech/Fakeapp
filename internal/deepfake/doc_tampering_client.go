@@ -39,8 +39,12 @@ func (c *Client) Submit(data string, layers []string) (*SubmitResponse, error) {
 
 	if resp.StatusCode != http.StatusAccepted {
 		var errResp ResultResponse
-		_ = json.NewDecoder(resp.Body).Decode(&errResp)
-		return nil, fmt.Errorf("deepfake: submit failed (%d): %s – %s", resp.StatusCode, errResp.Code, errResp.Message)
+		json.NewDecoder(resp.Body).Decode(&errResp)
+		if errResp.Code != "" || errResp.Message != "" {
+			return nil, fmt.Errorf("deepfake: submit failed (%d): %s – %s", resp.StatusCode, errResp.Code, errResp.Message)
+		}
+		// If error response is not valid JSON, fallback to generic error
+		return nil, fmt.Errorf("deepfake: submit failed (%d): service returned an error", resp.StatusCode)
 	}
 
 	var out SubmitResponse
@@ -58,6 +62,10 @@ func (c *Client) Poll(taskID string) (*ResultResponse, int, error) {
 		return nil, 0, fmt.Errorf("deepfake: poll: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		return nil, resp.StatusCode, fmt.Errorf("deepfake: poll failed (%d): service error", resp.StatusCode)
+	}
 
 	var out ResultResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -79,13 +87,13 @@ func (c *Client) AnalyzeSync(data string, layers []string) (*ResultResponse, err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("deepfake: analyze sync failed (%d): service error", resp.StatusCode)
+	}
+
 	var out ResultResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, fmt.Errorf("deepfake: decode sync response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("deepfake: analyze sync failed (%d): %s – %s", resp.StatusCode, out.Code, out.Message)
 	}
 	return &out, nil
 }
@@ -97,6 +105,10 @@ func (c *Client) Health() (map[string]interface{}, error) {
 		return nil, fmt.Errorf("deepfake: health: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("deepfake: health check failed (%d): service error", resp.StatusCode)
+	}
 
 	var out map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {

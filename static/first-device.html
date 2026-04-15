@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timble Device 1 - Trusted Mobile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --surface: #ffffff;
+            --text: #111827;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --primary: #0f766e;
+            --primary-light: #ecfdf5;
+            --success: #10B981;
+            --success-light: #ECFDF5;
+            --error: #EF4444;
+            --error-light: #FEF2F2;
+            --warning: #F59E0B;
+            --warning-light: #FEF3C7;
+            --radius: 14px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--text);
+            background: #000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px;
+            height: 580px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            z-index: 1;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 256px;
+            height: 556px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-radius: 42px;
+            z-index: 2;
+        }
+
+        .mobile-bg-text {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 240px;
+            height: 520px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            z-index: 3;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        .mobile-bg-text h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0;
+            animation: fadeInOut 3s ease-in-out infinite;
+        }
+
+        .mobile-bg-text p {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0;
+            animation: fadeInOut 3s ease-in-out infinite 0.5s;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0.3; transform: translateY(-10px); }
+            50% { opacity: 0.9; transform: translateY(0); }
+            100% { opacity: 0.3; transform: translateY(-10px); }
+        }
+
+        .topbar {
+            display: none;
+        }
+        .topbar .brand { font-size: 1.3rem; font-weight: 700; }
+        .topbar .badge {
+            background: rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .container {
+            max-width: 480px;
+            width: 100%;
+            padding: 24px 16px;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 24px 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+        }
+
+        h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+        .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 18px; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 11px 13px;
+            border: 1.5px solid var(--line);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 0.9rem;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus { border-color: var(--primary); }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+        }
+        .btn-primary:hover { background: #0b5b55; }
+        .btn-primary:disabled { background: #7fb8b3; cursor: not-allowed; }
+
+        .btn-approve {
+            background: var(--success);
+            color: white;
+            flex: 1;
+        }
+        .btn-approve:hover { background: #059669; }
+
+        .btn-deny {
+            background: var(--error);
+            color: white;
+            flex: 1;
+        }
+        .btn-deny:hover { background: #dc2626; }
+
+        .btn-refresh {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-size: 0.8rem;
+            padding: 8px 14px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .section-header h3 { 
+            font-size: 1.1rem; 
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .section-header .subtitle {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        .approval-card {
+            background: #f9fafb;
+            border: 1.5px solid var(--line);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .approval-card .title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .approval-card .title strong { font-size: 0.9rem; }
+        .approval-pill {
+            background: var(--warning-light);
+            color: var(--warning);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+            text-transform: uppercase;
+        }
+        .approval-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 14px;
+            font-size: 0.8rem;
+        }
+        .approval-meta span { color: var(--muted); display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.3px; }
+        .approval-meta strong { display: block; margin-top: 2px; word-break: break-all; }
+        .approval-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 28px 16px;
+            color: var(--muted);
+            font-size: 0.875rem;
+        }
+
+        .status-msg {
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 14px;
+        }
+        .status-msg.success { background: var(--success-light); color: var(--success); }
+        .status-msg.error { background: var(--error-light); color: var(--error); }
+        .status-msg.warning { background: var(--warning-light); color: var(--warning); }
+        .status-msg.info { background: var(--primary-light); color: var(--primary); }
+
+        .hidden { display: none !important; }
+
+        .popup-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .popup-content {
+            background: var(--surface);
+            border-radius: 28px;
+            max-width: 240px;
+            width: 85%;
+            max-height: 500px;
+            overflow-y: auto;
+            position: relative;
+            z-index: 10000;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 24px 20px;
+        }
+
+        .auto-poll-info {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 8px;
+        }
+
+        .spinner-inline {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--line);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <span class="brand">TIMBLE</span>
+        <span class="badge">Device 1: Trusted Mobile</span>
+    </div>
+
+    <!-- Hidden form fields with static values -->
+    <input type="hidden" id="clientId" value="client_123" />
+    <input type="hidden" id="userRef" value="user_457" />
+    <input type="hidden" id="apiBase" value="https://vishwas.timbleglance.com" />
+
+    <!-- Mobile Background Text Animation -->
+    <div class="mobile-bg-text">
+        <h1>Pending Web Login Alerts</h1>
+        <p>Approve or deny login requests</p>
+    </div>
+
+    <!-- Popup Modal -->
+    <div class="popup-modal">
+        <div class="popup-content">
+            <div class="section-header">
+                <div>
+                    <h3>Pending Web Login Alerts</h3>
+                    <p class="subtitle" style="margin: 4px 0 0 0;">Approve or deny login requests</p>
+                </div>
+            </div>
+
+            <!-- Status Message -->
+            <div id="statusMsg" class="status-msg hidden" style="margin-bottom: 16px;"></div>
+
+            <!-- Approvals List -->
+            <div id="approvalList"></div>
+            <div id="approvalEmpty" class="empty-state">Checking for pending approvals...</div>
+            <div class="auto-poll-info"><span class="spinner-inline"></span>Auto-refreshing every 4 seconds</div>
+
+            <button class="btn btn-refresh" onclick="fetchPending()" style="width: 100%; margin-top: 14px;">Refresh</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_STORAGE_KEY = 'timble.firstDevice.apiBase';
+        let pollTimer = null;
+
+        function normalizeApiBase(value) {
+            return (value || '').trim().replace(/\/+$/, '');
+        }
+
+        function getDefaultApiBase() {
+            const params = new URLSearchParams(window.location.search);
+            const fromQuery = normalizeApiBase(params.get('api_base'));
+            if (fromQuery) return fromQuery;
+
+            const stored = normalizeApiBase(localStorage.getItem(API_BASE_STORAGE_KEY));
+            if (stored) return stored;
+
+            const origin = normalizeApiBase(window.location.origin);
+            const protocol = window.location.protocol;
+            const isDirectFile = protocol === 'file:';
+            const isDevPort = ['3000', '4173', '5173', '5500'].includes(window.location.port);
+
+            if (!isDirectFile && origin && origin !== 'null' && !isDevPort) {
+                return origin;
+            }
+
+            return 'https://vishwas.timbleglance.com';
+        }
+
+        function getApiBase() {
+            return normalizeApiBase(document.getElementById('apiBase').value);
+        }
+
+        function showStatus(type, message) {
+            const el = document.getElementById('statusMsg');
+            el.className = 'status-msg ' + type;
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            document.getElementById('statusMsg').classList.add('hidden');
+        }
+
+        function prefillFromQuery() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('client_id')) document.getElementById('clientId').value = params.get('client_id');
+            if (params.get('user_ref')) document.getElementById('userRef').value = params.get('user_ref');
+            if (params.get('api_base')) document.getElementById('apiBase').value = normalizeApiBase(params.get('api_base'));
+        }
+
+        async function apiRequest(path, options) {
+            const apiBase = getApiBase();
+            if (!apiBase) throw new Error('API base URL is required.');
+
+            localStorage.setItem(API_BASE_STORAGE_KEY, apiBase);
+
+            const response = await fetch(apiBase + path, options);
+            const text = await response.text();
+            let data = null;
+            if (text) {
+                try { data = JSON.parse(text); } catch { data = { message: text }; }
+            }
+            return { response, data };
+        }
+
+        function renderApprovals(items) {
+            const list = document.getElementById('approvalList');
+            const empty = document.getElementById('approvalEmpty');
+
+            if (!items.length) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            list.innerHTML = items.map(item => {
+                const device = item.requesting_device || {};
+                return `
+                    <article class="approval-card">
+                        <div class="title">
+                            <strong>Mobile Approval</strong>
+                            <span class="approval-pill">Pending</span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 12px;">
+                            Payment transaction use for different device id
+                        </div>
+                        <div class="approval-meta">
+                            <div>
+                                <span>Device ID</span>
+                                <strong>${device.device_id || 'Unknown'}</strong>
+                            </div>
+                            <div>
+                                <span>Platform</span>
+                                <strong>${device.platform || 'web'}</strong>
+                            </div>
+                            <div>
+                                <span>Device Model</span>
+                                <strong>${device.device_model || 'Browser'}</strong>
+                            </div>
+                            <div>
+                                <span>Expires At</span>
+                                <strong>${item.expires_at || 'Unknown'}</strong>
+                            </div>
+                        </div>
+                        <div class="approval-actions">
+                            <button class="btn btn-approve" onclick="respondApproval('${item.approval_id}', 'approve')">Approve</button>
+                            <button class="btn btn-deny" onclick="respondApproval('${item.approval_id}', 'deny')">Deny</button>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        async function fetchPending() {
+            const clientId = document.getElementById('clientId').value.trim();
+            const userRef = document.getElementById('userRef').value.trim();
+            const apiBase = getApiBase();
+
+            if (!clientId || !userRef || !apiBase) {
+                showStatus('error', 'Configuration missing.');
+                return;
+            }
+
+            hideStatus();
+
+            try {
+                const query = new URLSearchParams({ client_id: clientId, user_ref: userRef });
+                const { response, data } = await apiRequest(`/v1/auth/device-verify/pending?${query.toString()}`);
+
+                if (!response.ok || !data) {
+                    showStatus('error', (data && (data.message || data.error)) || `Failed to fetch pending approvals (${response.status})`);
+                    renderApprovals([]);
+                    return;
+                }
+
+                const items = Array.isArray(data.pending) ? data.pending : [];
+                renderApprovals(items);
+
+                if (items.length > 0) {
+                    showStatus('warning', `${items.length} pending approval${items.length > 1 ? 's' : ''} waiting for action.`);
+                }
+
+                startAutoPolling();
+            } catch (err) {
+                showStatus('error', 'Network error: ' + err.message);
+                renderApprovals([]);
+            }
+        }
+
+        async function respondApproval(approvalId, action) {
+            const clientId = document.getElementById('clientId').value.trim();
+            const userRef = document.getElementById('userRef').value.trim();
+
+            try {
+                const { response, data } = await apiRequest('/v1/auth/device-verify/respond', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        client_id: clientId,
+                        user_ref: userRef,
+                        approval_id: approvalId,
+                        action: action
+                    })
+                });
+
+                if (!response.ok || !data) {
+                    showStatus('error', (data && (data.message || data.error)) || `Action failed (${response.status})`);
+                    return;
+                }
+
+                if (action === 'approve') {
+                    showStatus('success', 'Web login approved. The web application should now complete login.');
+                } else {
+                    showStatus('warning', 'Web login denied from this trusted device.');
+                }
+
+                await fetchPending();
+            } catch (err) {
+                showStatus('error', 'Network error: ' + err.message);
+            }
+        }
+
+        function startAutoPolling() {
+            if (pollTimer) return;
+            pollTimer = setInterval(() => {
+                const clientId = document.getElementById('clientId').value.trim();
+                const userRef = document.getElementById('userRef').value.trim();
+                const apiBase = getApiBase();
+                if (clientId && userRef && apiBase) {
+                    fetchPendingSilent();
+                }
+            }, 4000);
+        }
+
+        async function fetchPendingSilent() {
+            try {
+                const clientId = document.getElementById('clientId').value.trim();
+                const userRef = document.getElementById('userRef').value.trim();
+                const query = new URLSearchParams({ client_id: clientId, user_ref: userRef });
+                const { response, data } = await apiRequest(`/v1/auth/device-verify/pending?${query.toString()}`);
+                if (response.ok && data) {
+                    const items = Array.isArray(data.pending) ? data.pending : [];
+                    renderApprovals(items);
+                }
+            } catch {}
+        }
+
+        // Initialize
+        document.getElementById('apiBase').value = getDefaultApiBase();
+        prefillFromQuery();
+
+        // Auto-load pending approvals on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                fetchPending();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

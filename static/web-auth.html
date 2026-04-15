@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timble Web Login</title>
+    <title>SecurePay - Online Payment</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -226,42 +226,53 @@
             margin-top: 4px;
         }
 
-        .helper-text {
-            margin-top: 6px;
-            color: var(--muted);
-            font-size: 0.8125rem;
-            line-height: 1.45;
-        }
     </style>
 </head>
 <body>
     <div class="topbar">
-        <span class="brand">TIMBLE</span>
-        <span class="badge">Web Login</span>
+        <span class="brand">SecurePay</span>
+        <span class="badge">Online Payment</span>
     </div>
 
     <div class="container">
-        <!-- Step 1: Login Form -->
+        <!-- Hidden config fields -->
+        <input type="hidden" id="clientId" value="client_123" />
+        <input type="hidden" id="userRef" value="user_457" />
+        <input type="hidden" id="apiBase" value="https://vishwas.timbleglance.com" />
+
+        <!-- Step 1: Payment Form -->
         <div id="loginCard" class="card">
-            <h2>Sign in from Web</h2>
-            <p class="subtitle">Enter your credentials. Your mobile device will be asked to approve this login.</p>
+            <h2>Complete Your Payment</h2>
+            <p class="subtitle">Enter your card details to proceed. Payment will require approval from your registered mobile device.</p>
 
             <div class="form-group">
-                <label>Client ID</label>
-                <input type="text" id="clientId" value="client_123" />
+                <label>Cardholder Name</label>
+                <input type="text" id="cardName" placeholder="John Doe" />
             </div>
             <div class="form-group">
-                <label>User Reference</label>
-                <input type="text" id="userRef" placeholder="e.g. user_457" />
+                <label>Card Number</label>
+                <input type="text" id="cardNumber" placeholder="4242 4242 4242 4242" maxlength="19" oninput="formatCardNumber(this)" />
+            </div>
+            <div style="display:flex; gap:12px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Expiry Date</label>
+                    <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5" oninput="formatExpiry(this)" />
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>CVV</label>
+                    <input type="password" id="cardCvv" placeholder="123" maxlength="4" />
+                </div>
             </div>
             <div class="form-group">
-                <label>API Base URL</label>
-                <input type="text" id="apiBase" placeholder="http://localhost:8080" />
-                <div id="apiBaseHint" class="helper-text"></div>
+                <label>Amount</label>
+                <div style="position:relative;">
+                    <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:600;font-size:0.95rem;">&#8377;</span>
+                    <input type="text" id="payAmount" placeholder="1,000.00" style="padding-left:28px;" />
+                </div>
             </div>
 
             <button class="btn btn-primary" id="loginBtn" onclick="startWebLogin()">
-                Sign In
+                Pay Now
             </button>
 
             <div id="loginError" class="hidden" style="margin-top:12px; color:var(--error); font-size:0.875rem; font-weight:500;"></div>
@@ -269,20 +280,21 @@
 
         <!-- Step 2: Waiting for mobile approval -->
         <div id="waitingCard" class="card hidden">
-            <h2>Waiting for Approval</h2>
-            <p class="subtitle">A login request has been sent to your mobile device.</p>
+            <h2>Payment Pending Approval</h2>
+            <p class="subtitle">A payment approval request has been sent to your registered mobile device.</p>
+
+            <div id="paymentSummary" style="background:#f8fafc;border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;border:1px solid var(--line);">
+            </div>
 
             <div class="phone-alert">
                 <svg class="phone-svg" width="80" height="120" viewBox="0 0 80 120">
                     <rect x="10" y="0" width="60" height="110" rx="10" fill="#1E3A8A" opacity="0.1" stroke="#1E3A8A" stroke-width="2"/>
                     <rect x="18" y="12" width="44" height="76" rx="4" fill="white" stroke="#e5e7eb" stroke-width="1"/>
                     <circle cx="40" cy="100" r="5" fill="#1E3A8A" opacity="0.3"/>
-                    <!-- Notification bell -->
                     <g class="pulse">
                         <circle cx="58" cy="8" r="10" fill="#EF4444"/>
                         <text x="58" y="12" text-anchor="middle" fill="white" font-size="12" font-weight="bold">!</text>
                     </g>
-                    <!-- Screen content -->
                     <rect x="24" y="28" width="32" height="4" rx="2" fill="#e5e7eb"/>
                     <rect x="24" y="38" width="24" height="3" rx="1.5" fill="#e5e7eb"/>
                     <rect x="22" y="52" width="16" height="20" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1"/>
@@ -290,8 +302,8 @@
                     <rect x="42" y="52" width="16" height="20" rx="4" fill="#FEF2F2" stroke="#EF4444" stroke-width="1"/>
                     <text x="50" y="66" text-anchor="middle" fill="#EF4444" font-size="10">&#x2717;</text>
                 </svg>
-                <p style="font-weight:600; color:var(--text);">Check your phone</p>
-                <p style="color:var(--muted); font-size:0.8125rem; margin-top:4px;">Open the Timble app and approve the login request</p>
+                <p style="font-weight:600; color:var(--text);">Approve on your phone</p>
+                <p style="color:var(--muted); font-size:0.8125rem; margin-top:4px;">Open your mobile device to approve this payment</p>
                 <div id="timerDisplay" class="timer"></div>
             </div>
 
@@ -299,22 +311,22 @@
                 <div class="step">
                     <div class="step-icon success">&#x2713;</div>
                     <div class="step-text">
-                        <div class="step-title">Credentials Verified</div>
-                        <div class="step-desc">User identity confirmed</div>
+                        <div class="step-title">Card Details Verified</div>
+                        <div class="step-desc">Payment information accepted</div>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-icon active"><div class="spinner"></div></div>
                     <div class="step-text">
                         <div class="step-title">Mobile Approval</div>
-                        <div class="step-desc" id="pollStatus">Waiting for your mobile device...</div>
+                        <div class="step-desc" id="pollStatus">Waiting for approval on your device...</div>
                     </div>
                 </div>
                 <div class="step" id="stepLogin">
                     <div class="step-icon pending">3</div>
                     <div class="step-text">
-                        <div class="step-title">Login Complete</div>
-                        <div class="step-desc">Session will be created</div>
+                        <div class="step-title">Payment Complete</div>
+                        <div class="step-desc">Transaction will be processed</div>
                     </div>
                 </div>
             </div>
@@ -324,10 +336,10 @@
         <div id="resultCard" class="card hidden">
             <div id="resultBanner" class="result-banner"></div>
             <div id="tokenArea" class="hidden">
-                <p style="margin-top:16px; font-size:0.875rem; color:var(--muted); font-weight:500;">Auth Context Token</p>
+                <p style="margin-top:16px; font-size:0.875rem; color:var(--muted); font-weight:500;">Transaction Reference</p>
                 <div class="token-display" id="tokenDisplay"></div>
             </div>
-            <button class="link-btn" onclick="resetForm()">Try again</button>
+            <button class="link-btn" onclick="resetForm()">Make another payment</button>
         </div>
     </div>
 
@@ -337,6 +349,20 @@
 
         let pollTimer = null;
         let countdownTimer = null;
+
+        function formatCardNumber(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = value.substring(0, 16);
+            input.value = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+        }
+
+        function formatExpiry(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length >= 2) {
+                value = value.substring(0, 2) + '/' + value.substring(2, 4);
+            }
+            input.value = value;
+        }
 
         function normalizeApiBase(value) {
             return (value || '').trim().replace(/\/+$/, '');
@@ -372,11 +398,7 @@
                 return origin;
             }
 
-            if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
-                return `http://${hostname}:8080`;
-            }
-
-            return 'http://localhost:8080';
+            return 'https://vishwas.timbleglance.com';
         }
 
         function getApiBase() {
@@ -385,22 +407,11 @@
 
         function buildApiBaseCandidates(preferredApiBase) {
             const protocol = window.location.protocol;
-            const hostname = window.location.hostname || 'localhost';
             const currentOrigin = normalizeApiBase(window.location.origin);
-            const isKnownDevPort = ['3000', '4173', '5173', '5500'].includes(window.location.port);
-            const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
-            const shouldTryLocalFallbacks = protocol === 'file:' || isKnownDevPort || isLocalHost;
             const candidates = [normalizeApiBase(preferredApiBase)];
 
             if (isUsefulOrigin(currentOrigin)) {
                 candidates.push(currentOrigin);
-            }
-
-            if (shouldTryLocalFallbacks) {
-                uniqueValues([hostname, 'localhost', '127.0.0.1']).forEach((host) => {
-                    candidates.push(`http://${host}:8080`);
-                    candidates.push(`http://${host}:8097`);
-                });
             }
 
             return uniqueValues(candidates.map(normalizeApiBase));
@@ -413,24 +424,6 @@
             } else {
                 localStorage.removeItem(API_BASE_STORAGE_KEY);
             }
-            updateApiBaseHint(apiBase);
-        }
-
-        function updateApiBaseHint(apiBase) {
-            const hint = document.getElementById('apiBaseHint');
-            const protocol = window.location.protocol;
-
-            if (!apiBase) {
-                hint.textContent = 'Enter the full Timble API origin, for example http://localhost:8080.';
-                return;
-            }
-
-            if (protocol === 'file:') {
-                hint.textContent = `Opened from a local file. Requests will be sent to ${apiBase}.`;
-                return;
-            }
-
-            hint.textContent = `Requests will be sent to ${apiBase}. Change this if the page is not served by the Timble API server.`;
         }
 
         async function requestJSON(path, options) {
@@ -503,63 +496,93 @@
         }
 
         async function startWebLogin() {
-            const clientId = document.getElementById('clientId').value.trim();
             const userRef = document.getElementById('userRef').value.trim();
+            const cardName = document.getElementById('cardName').value.trim();
+            const cardNumber = document.getElementById('cardNumber').value.replace(/\s/g, '');
+            const cardExpiry = document.getElementById('cardExpiry').value.trim();
+            const cardCvv = document.getElementById('cardCvv').value.trim();
+            const payAmount = document.getElementById('payAmount').value.trim();
+
             const loginBtn = document.getElementById('loginBtn');
             const loginError = document.getElementById('loginError');
-            const apiBase = getApiBase();
 
             loginError.classList.add('hidden');
 
-            if (!clientId || !userRef || !apiBase) {
-                loginError.textContent = 'Please fill in all fields.';
+            if (!cardName || !cardNumber || !cardExpiry || !cardCvv || !payAmount) {
+                loginError.textContent = 'Please fill in all payment details.';
                 loginError.classList.remove('hidden');
                 return;
             }
 
+            if (cardNumber.length < 13 || cardNumber.length > 16) {
+                loginError.textContent = 'Please enter a valid card number.';
+                loginError.classList.remove('hidden');
+                return;
+            }
+
+            const clientId = document.getElementById('clientId').value.trim();
+            const apiBase = getApiBase();
+
+            // Show payment summary on waiting card
+            const maskedCard = '**** **** **** ' + cardNumber.slice(-4);
+            document.getElementById('paymentSummary').innerHTML = `
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <span style="color:var(--muted);font-size:0.8rem;">Card</span>
+                    <strong style="font-size:0.875rem;">${maskedCard}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                    <span style="color:var(--muted);font-size:0.8rem;">Name</span>
+                    <strong style="font-size:0.875rem;">${cardName}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="color:var(--muted);font-size:0.8rem;">Amount</span>
+                    <strong style="font-size:1rem;color:var(--primary);">&#8377; ${payAmount}</strong>
+                </div>
+            `;
+
             persistApiBase();
             loginBtn.disabled = true;
-            loginBtn.textContent = 'Sending request...';
+            loginBtn.textContent = 'Processing...';
 
             try {
-                // Call device-verify to initiate approval from web
-                const { response, data, url } = await requestJSON('/v1/auth/device-verify', {
+                // Call auth/start which auto-triggers device verification for unknown devices
+                const { response, data, url } = await requestJSON('/v1/auth/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         client_id: clientId,
                         user_ref: userRef,
+                        mode: 'device',
                         device_info: {
                             device_id: WEB_DEVICE_ID,
                             platform: 'web',
                             device_model: navigator.userAgent.substring(0, 60),
                             os_version: navigator.platform
-                        },
-                        public_key: ''
+                        }
                     })
                 });
 
                 if (!response.ok || !data) {
-                    loginError.textContent = getResponseMessage(response, data, `Request to ${url} failed`);
+                    loginError.textContent = getResponseMessage(response, data, `Payment request failed`);
                     loginError.classList.remove('hidden');
                     loginBtn.disabled = false;
-                    loginBtn.textContent = 'Sign In';
+                    loginBtn.textContent = 'Pay Now';
                     return;
                 }
 
                 if (data.error) {
-                    loginError.textContent = getResponseMessage(response, data, 'Unable to start web login');
+                    loginError.textContent = getResponseMessage(response, data, 'Unable to process payment');
                     loginError.classList.remove('hidden');
                     loginBtn.disabled = false;
-                    loginBtn.textContent = 'Sign In';
+                    loginBtn.textContent = 'Pay Now';
                     return;
                 }
 
                 if (data.status === 'KNOWN_DEVICE') {
-                    loginError.textContent = 'This device is already registered. Use normal login.';
+                    loginError.textContent = 'This device is already registered.';
                     loginError.classList.remove('hidden');
                     loginBtn.disabled = false;
-                    loginBtn.textContent = 'Sign In';
+                    loginBtn.textContent = 'Pay Now';
                     return;
                 }
 
@@ -567,14 +590,14 @@
                 document.getElementById('loginCard').classList.add('hidden');
                 document.getElementById('waitingCard').classList.remove('hidden');
 
-                // Start polling for approval
-                startPolling(clientId, data.approval_id);
+                // Start polling for approval (auth/start returns auth_session_id as approval id)
+                startPolling(clientId, data.auth_session_id || data.approval_id);
 
             } catch (err) {
                 loginError.textContent = 'Network error: ' + err.message;
                 loginError.classList.remove('hidden');
                 loginBtn.disabled = false;
-                loginBtn.textContent = 'Sign In';
+                loginBtn.textContent = 'Pay Now';
             }
         }
 
@@ -591,7 +614,7 @@
                 if (seconds <= 0) {
                     clearInterval(countdownTimer);
                     clearInterval(pollTimer);
-                    showResult('expired', 'Request expired. No response from mobile device.');
+                    showResult('expired', 'Payment approval expired. No response from mobile device.');
                 }
             }, 1000);
 
@@ -616,15 +639,15 @@
                     if (data.status === 'APPROVED') {
                         clearInterval(pollTimer);
                         clearInterval(countdownTimer);
-                        showResult('approved', 'Login approved by your mobile device!');
+                        showResult('approved', 'Payment approved! Transaction successful.');
                     } else if (data.status === 'DENIED') {
                         clearInterval(pollTimer);
                         clearInterval(countdownTimer);
-                        showResult('denied', 'Login denied by your mobile device.');
+                        showResult('denied', 'Payment denied by your mobile device.');
                     } else if (data.status === 'EXPIRED') {
                         clearInterval(pollTimer);
                         clearInterval(countdownTimer);
-                        showResult('expired', 'Approval request has expired.');
+                        showResult('expired', 'Payment approval request has expired.');
                     }
                 } catch (err) {
                     document.getElementById('pollStatus').textContent = 'Connection error, retrying...';
@@ -642,7 +665,7 @@
             if (type === 'approved') {
                 banner.innerHTML = '&#x2713; ' + message;
                 document.getElementById('tokenArea').classList.remove('hidden');
-                document.getElementById('tokenDisplay').textContent = 'Session active. Web device approved for user.';
+                document.getElementById('tokenDisplay').textContent = 'TXN-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8).toUpperCase();
             } else if (type === 'denied') {
                 banner.innerHTML = '&#x2717; ' + message;
             } else {
@@ -659,14 +682,17 @@
             document.getElementById('tokenArea').classList.add('hidden');
             document.getElementById('loginError').classList.add('hidden');
             document.getElementById('loginBtn').disabled = false;
-            document.getElementById('loginBtn').textContent = 'Sign In';
+            document.getElementById('loginBtn').textContent = 'Pay Now';
         }
 
         const apiBaseInput = document.getElementById('apiBase');
         apiBaseInput.value = getDefaultApiBase();
-        updateApiBaseHint(apiBaseInput.value);
-        apiBaseInput.addEventListener('change', persistApiBase);
-        apiBaseInput.addEventListener('blur', persistApiBase);
+
+        // Prefill from query params if present
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('client_id')) document.getElementById('clientId').value = params.get('client_id');
+        if (params.get('user_ref')) document.getElementById('userRef').value = params.get('user_ref');
+        if (params.get('api_base')) apiBaseInput.value = normalizeApiBase(params.get('api_base'));
     </script>
 </body>
 </html>

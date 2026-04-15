@@ -25,12 +25,14 @@ func (c *Client) DetectImage(file io.Reader, filename string) (*FaceImageResult,
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("face: detect image failed (%d): %s", resp.StatusCode, string(body))
+	}
+
 	var out FaceImageResult
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, fmt.Errorf("face: decode image response: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("face: detect image failed (%d): %s", resp.StatusCode, out.Detail)
 	}
 	return &out, nil
 }
@@ -55,12 +57,14 @@ func (c *Client) SubmitVideo(file io.Reader, filename string, sampleEvery int) (
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("face: submit video failed (%d): %s", resp.StatusCode, string(body))
+	}
+
 	var out VideoSubmitResult
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, fmt.Errorf("face: decode video submit response: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("face: submit video failed (%d): %s", resp.StatusCode, out.Detail)
 	}
 	return &out, nil
 }
@@ -73,6 +77,11 @@ func (c *Client) PollVideo(jobID string) (*VideoJobResult, int, error) {
 		return nil, 0, fmt.Errorf("face: poll video: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, resp.StatusCode, fmt.Errorf("face: poll video failed: %s", string(body))
+	}
 
 	var out VideoJobResult
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -89,6 +98,11 @@ func (c *Client) ListVideoJobs() (*VideoJobListResult, error) {
 		return nil, fmt.Errorf("face: list video jobs: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("face: list video jobs failed (%d): %s", resp.StatusCode, string(body))
+	}
 
 	var out VideoJobListResult
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {

@@ -173,6 +173,12 @@
             background: linear-gradient(135deg, var(--primary-light) 0%, #fef9f0 100%);
             border-color: rgba(15,118,110,0.2);
         }
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
         .panel h2 {
             font-size: 1.2rem;
             font-weight: 700;
@@ -974,6 +980,10 @@
                     <div class="panel hero">
                         <h2>Device Authentication</h2>
                         <p>Register a device and complete challenge-sign verification with context token validation.</p>
+                        <div class="hero-actions">
+                            <a class="btn primary" href="/first-device.html">Device 1: Trusted Mobile</a>
+                            <a class="btn secondary" href="/web-auth.html">Device 2: Web Login</a>
+                        </div>
                     </div>
                     <div class="panel">
                         <h3>1. Register Device</h3>
@@ -1540,7 +1550,8 @@
                 statusVal = data.summary.decision;
                 if (data.summary.risk_level) subtitle = `Risk: ${data.summary.risk_level}`;
                 if (data.summary.overall_risk_score != null) {
-                    const pct = (data.summary.overall_risk_score * 100).toFixed(1);
+                    const raw = data.summary.overall_risk_score;
+                    const pct = (raw > 1 ? raw : raw * 100).toFixed(1);
                     subtitle += (subtitle ? ' | ' : '') + `Score: ${pct}%`;
                 }
             }
@@ -1697,14 +1708,59 @@
             const label = document.getElementById(filenameId);
             if (!drop || !input || !label) return;
             const placeholder = label.textContent;
+            const accept = input.accept || '';
+            const previewHost = document.createElement('div');
+            previewHost.className = 'file-preview';
+            previewHost.style.cssText = 'display:none;margin-top:8px';
+            label.insertAdjacentElement('afterend', previewHost);
+            let currentUrl = null;
+
+            function clearPreview() {
+                if (currentUrl) { URL.revokeObjectURL(currentUrl); currentUrl = null; }
+                previewHost.innerHTML = '';
+                previewHost.style.display = 'none';
+            }
+
+            function renderPreview(file) {
+                clearPreview();
+                const type = file.type || '';
+                const url = URL.createObjectURL(file);
+                currentUrl = url;
+                let el;
+                if (type.startsWith('image/') || accept.includes('image')) {
+                    el = document.createElement('img');
+                    el.src = url;
+                    el.style.cssText = 'max-height:160px;max-width:100%;border-radius:6px;object-fit:contain';
+                } else if (type.startsWith('video/') || accept.includes('video')) {
+                    el = document.createElement('video');
+                    el.src = url;
+                    el.controls = true;
+                    el.preload = 'metadata';
+                    el.style.cssText = 'max-height:200px;max-width:100%;border-radius:6px;background:#000';
+                } else if (type.startsWith('audio/') || accept.includes('audio')) {
+                    el = document.createElement('audio');
+                    el.src = url;
+                    el.controls = true;
+                    el.preload = 'metadata';
+                    el.style.cssText = 'width:100%';
+                } else {
+                    URL.revokeObjectURL(url);
+                    currentUrl = null;
+                    return;
+                }
+                previewHost.appendChild(el);
+                previewHost.style.display = 'block';
+            }
 
             function updateLabel(file) {
                 if (file) {
                     label.textContent = file.name;
                     drop.classList.add('has-file');
+                    renderPreview(file);
                 } else {
                     label.textContent = placeholder;
                     drop.classList.remove('has-file');
+                    clearPreview();
                 }
             }
 
