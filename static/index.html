@@ -1706,8 +1706,9 @@
             const accept = input.accept || '';
             const previewHost = document.createElement('div');
             previewHost.className = 'file-preview';
-            previewHost.style.cssText = 'display:none;margin-top:8px';
-            label.insertAdjacentElement('afterend', previewHost);
+            previewHost.style.cssText = 'display:none;margin-top:8px;position:relative;z-index:2';
+            previewHost.addEventListener('click', e => e.stopPropagation());
+            drop.insertAdjacentElement('afterend', previewHost);
             let currentUrl = null;
 
             function clearPreview() {
@@ -1731,7 +1732,7 @@
                     el.src = url;
                     el.controls = true;
                     el.preload = 'metadata';
-                    el.style.cssText = 'max-height:200px;max-width:100%;border-radius:6px;background:#000';
+                    el.style.cssText = 'width:100%;max-height:480px;border-radius:6px;background:#000';
                 } else if (type.startsWith('audio/') || accept.includes('audio')) {
                     el = document.createElement('audio');
                     el.src = url;
@@ -1749,13 +1750,28 @@
 
             function updateLabel(file) {
                 if (file) {
-                    label.textContent = file.name;
+                    label.innerHTML = '';
+                    const name = document.createElement('span');
+                    name.textContent = file.name;
+                    const change = document.createElement('button');
+                    change.type = 'button';
+                    change.textContent = 'Change';
+                    change.className = 'btn-change-file';
+                    change.style.cssText = 'margin-left:12px;padding:4px 10px;font-size:0.75rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--text);font-weight:600';
+                    change.addEventListener('click', e => {
+                        e.stopPropagation();
+                        input.click();
+                    });
+                    label.appendChild(name);
+                    label.appendChild(change);
                     drop.classList.add('has-file');
                     renderPreview(file);
+                    input.style.pointerEvents = 'none';
                 } else {
                     label.textContent = placeholder;
                     drop.classList.remove('has-file');
                     clearPreview();
+                    input.style.pointerEvents = '';
                 }
             }
 
@@ -2047,7 +2063,13 @@
             form.append('file', file);
             try {
                 const resp = await fetch('/v1/face/video', { method: 'POST', body: form });
-                const data = await resp.json();
+                const text = await resp.text();
+                let data;
+                try { data = JSON.parse(text); }
+                catch {
+                    setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', `Server returned non-JSON (HTTP ${resp.status}). First 200 chars: ${text.slice(0,200)}`, 'ERROR');
+                    return;
+                }
                 if (!resp.ok) { setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, 'ERROR'); return; }
                 state.faceVid.jobId = data.job_id;
                 if (!data.job_id) { setStatus('face-vid-status', 'face-vid-badge', 'face-vid-output', data, 'SUCCESS'); return; }
