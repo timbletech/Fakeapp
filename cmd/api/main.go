@@ -104,6 +104,11 @@ func main() {
 		simCfg.SekuraClientKey,
 		simCfg.SekuraClientSecret,
 		simCfg.SekuraRefreshToken,
+		simCfg.SekuraPollingKey,
+		simCfg.SekuraPollingSecret,
+		simCfg.SekuraScopes,
+		simCfg.PollingMaxRetries,
+		simCfg.PollingRetryDelayMs,
 	)
 
 	// Construct the dynamic base URL from configuration for the SIM redirect logic
@@ -115,6 +120,7 @@ func main() {
 		baseURL,
 		simCfg.SessionTTLSeconds,
 		simCfg.SessionMaxAttempts,
+		simCfg.DevMode,
 	)
 	simAuthHandler := simapi.NewAuthHandler(simAuthService)
 
@@ -149,6 +155,11 @@ func main() {
 	mux.Handle("/v1/sim/complete", simmiddleware.APIKeyAuth(simCfg.TimbleAPIKey, http.HandlerFunc(simAuthHandler.Complete)))
 	// No auth required for redirect so device can seamlessly navigate to it
 	mux.Handle("/v1/sim/redirect/", http.HandlerFunc(simAuthHandler.Redirect))
+	// Success/error page (kept for completeness; current flow goes to home instead).
+	mux.Handle("/v1/sim/result/", http.HandlerFunc(simAuthHandler.Result))
+	// PNG QR generator used by the demo UI to render a scannable image of
+	// the wrapped session_uri.
+	mux.Handle("/v1/sim/qr.png", http.HandlerFunc(simAuthHandler.QR))
 	// No auth required for polling proxy so browser/mobile clients can call it directly
 	mux.Handle("/v1/sim/poll/", http.HandlerFunc(simAuthHandler.Poll))
 

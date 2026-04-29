@@ -105,6 +105,7 @@ type StartAuthResponse struct {
 type SimChallenge struct {
 	AuthSessionID    string `json:"auth_session_id"`
 	SessionURI       string `json:"session_uri"`
+	PollingURI       string `json:"polling_uri"`
 	ExpiresInSeconds int    `json:"expires_in_seconds"`
 	Instructions     string `json:"instructions,omitempty"`
 }

@@ -329,6 +329,36 @@ curl -s -X POST "$API_BASE/v1/auth/device-verify/status" \
 # 21) New device can now call /v1/auth/start normally (device is now trusted)
 ```
 
+## Server-side redirect proxy (`/api/proxy`)
+
+`GET /api/proxy?url=<encoded-url>` follows a redirect chain server-side and
+returns each hop plus the final body as JSON.
+
+**Why this exists:** Sekura's `session_uri` redirects HTTPS -> HTTP -> HTTPS.
+Browsers refuse to follow an HTTPS page's redirect to a plain-HTTP host
+(mixed-content blocking) and there is no client-side flag that disables this,
+so a frontend `fetch()` against `session_uri` always errors out with
+"TypeError: Failed to fetch". The proxy walks the chain with `net/http`
+(auto-follow disabled) and reports what happened.
+
+**Do not "simplify" this back to a direct browser fetch.** It will not work
+even if it looks redundant on a clean network.
+
+Behavior:
+- Caps at 10 hops, 15 s per hop.
+- Always blocks private/loopback/link-local IP literals (anti-SSRF).
+- Optional hostname allowlist via `PROXY_ALLOWED_HOSTS` env var (comma-separated).
+  When unset, any public host is allowed; a warning is logged at startup.
+- Returns: `final_status`, `final_url`, `chain[]`, `headers`, `body`,
+  `body_encoding` (`utf-8` for text, `base64` otherwise), `truncated`.
+- Body capped at 1 MiB.
+- `Access-Control-Allow-Origin: *` so the SPA at `static/` can call it.
+
+Example:
+```bash
+curl -s "https://your-host/api/proxy?url=$(jq -rn --arg u 'http://example.com/' '$u|@uri')" | jq .
+```
+
 ## Production Differences
 
 Before deploying to production:

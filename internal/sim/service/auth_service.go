@@ -41,15 +41,20 @@ type AuthService struct {
 	baseURL     string
 	sessionTTL  time.Duration
 	maxAttempts int
+	devMode     bool
 }
 
 // NewAuthService wires dependencies and returns a ready-to-use AuthService.
+// When devMode is true, upstream Sekura failures are tolerated with mock data so
+// developers can run the flow without the integration being live; in production
+// (devMode=false) StartAuth fails closed with an upstream error instead.
 func NewAuthService(
 	store *store.SessionStore,
 	sekura *provider.SekuraProvider,
 	baseURL string,
 	sessionTTLSeconds int,
 	maxAttempts int,
+	devMode bool,
 ) *AuthService {
 	return &AuthService{
 		store:       store,
@@ -57,6 +62,7 @@ func NewAuthService(
 		baseURL:     strings.TrimRight(baseURL, "/"),
 		sessionTTL:  time.Duration(sessionTTLSeconds) * time.Second,
 		maxAttempts: maxAttempts,
+		devMode:     devMode,
 	}
 }
 
@@ -69,12 +75,21 @@ func (s *AuthService) StartAuth(req *model.StartRequest) (*model.StartResponse, 
 
 	token, err := s.sekura.GetToken()
 	if err != nil {
-		log.Printf("[ERROR] Sekura GetToken failed: %v. Proceeding with mock token for demo.", err)
+		if !s.devMode {
+			log.Printf("[ERROR] Sekura GetToken failed: %v", err)
+			return nil, fmt.Errorf("sim_provider_unavailable: %w", err)
+		}
+		log.Printf("[WARN] Sekura GetToken failed in DEV_MODE, using mock token: %v", err)
 		token = "mock_token"
 	}
 
 	insights, err := s.sekura.GetInsights(req.MSISDN, token)
 	if err != nil {
+		if !s.devMode {
+			log.Printf("[ERROR] Sekura GetInsights failed: %v", err)
+			return nil, fmt.Errorf("sim_provider_unavailable: %w", err)
+		}
+		log.Printf("[WARN] Sekura GetInsights failed in DEV_MODE, using mock insights: %v", err)
 		insights = &model.SekuraInsightsResponse{}
 		insights.DeviceMatch.SessionURI = "https://in.safr.xconnect.net/v1/dm/session/mock-session"
 		insights.DeviceMatch.PollingURI = "https://in.safr.xconnect.net/v1/dm/polling/mock-session"
@@ -105,7 +120,8 @@ func (s *AuthService) StartAuth(req *model.StartRequest) (*model.StartResponse, 
 	log.Printf("[INFO] Session created: session_id=%s expires_at=%s", sessionID, session.ExpiresAt.Format(time.RFC3339))
 
 	wrappedURI := fmt.Sprintf("%s/v1/sim/redirect/%s", s.baseURL, sessionID)
-	wrappedPollingURI := fmt.Sprintf("%s/v1/sim/poll/%s", s.baseURL, sessionID)
+	pollingBase := strings.Replace(s.baseURL, "http://", "https://", 1)
+	wrappedPollingURI := fmt.Sprintf("%s/v1/sim/poll/%s", pollingBase, sessionID)
 
 	return &model.StartResponse{
 		AuthSessionID:  sessionID,
@@ -148,12 +164,11 @@ func (s *AuthService) CompleteAuth(authSessionID string) (*AuthResult, *SessionE
 		}
 	}
 
-	// Increment and persist the attempt counter before calling upstream so a
-	// failed/errored call still counts against the limit.
-	session.Attempts++
-	s.store.Update(session)
-
-	if session.Attempts > s.maxAttempts {
+	// Cap is checked before the upstream call so the user sees the same answer
+	// whether or not Sekura is reachable. The counter is only incremented on a
+	// real upstream response (200 or 202); upstream errors do not consume an
+	// attempt because the user has done nothing wrong.
+	if session.Attempts >= s.maxAttempts {
 		log.Printf("[WARN] Max attempts exceeded: session_id=%s attempts=%d", authSessionID, session.Attempts)
 		return nil, &SessionError{
 			Code:    "MAX_ATTEMPTS_EXCEEDED",
@@ -162,7 +177,7 @@ func (s *AuthService) CompleteAuth(authSessionID string) (*AuthResult, *SessionE
 		}
 	}
 
-	log.Printf("[INFO] CompleteAuth: session_id=%s attempt=%d/%d", authSessionID, session.Attempts, s.maxAttempts)
+	log.Printf("[INFO] CompleteAuth: session_id=%s attempt=%d/%d", authSessionID, session.Attempts+1, s.maxAttempts)
 
 	pollResp, ready, err := s.sekura.PollDeviceMatch(session.PollingURI)
 	if err != nil {
@@ -173,6 +188,9 @@ func (s *AuthService) CompleteAuth(authSessionID string) (*AuthResult, *SessionE
 			HTTP:    502,
 		}
 	}
+
+	session.Attempts++
+	s.store.Update(session)
 
 	if !ready {
 		remaining := s.maxAttempts - session.Attempts
@@ -235,6 +253,8 @@ func (s *AuthService) CompleteAuth(authSessionID string) (*AuthResult, *SessionE
 }
 
 // GetUpstreamSessionURI retrieves the upstream SessionURI for a given session ID.
+// This is a non-consuming peek; use ConsumeSessionURI when actually serving the
+// browser redirect so reuse is detectable.
 func (s *AuthService) GetUpstreamSessionURI(authSessionID string) (string, error) {
 	session, ok := s.store.Get(authSessionID)
 	if !ok {
@@ -244,6 +264,33 @@ func (s *AuthService) GetUpstreamSessionURI(authSessionID string) (string, error
 		return "", fmt.Errorf("session expired")
 	}
 	return session.SessionURI, nil
+}
+
+// ConsumeSessionURI returns the upstream SessionURI and marks the session as
+// having been redirected to. The second return is the previous redirected_at
+// timestamp: nil on the first consume, non-nil on every subsequent call.
+// Callers should treat a non-nil prior timestamp as "session already used".
+//
+// Note: the in-memory store's read-modify-write is not atomic across this
+// function; under heavy concurrency two requests can both observe nil and
+// both proceed. That is acceptable here because the upstream itself enforces
+// single-use, so the second request will get INVALID_REQUEST from Sekura
+// regardless. The marker is a UX safeguard, not a hard lock.
+func (s *AuthService) ConsumeSessionURI(authSessionID string) (string, *time.Time, error) {
+	session, ok := s.store.Get(authSessionID)
+	if !ok {
+		return "", nil, fmt.Errorf("session not found")
+	}
+	if time.Now().UTC().After(session.ExpiresAt) {
+		return "", nil, fmt.Errorf("session expired")
+	}
+	prior := session.RedirectedAt
+	if prior == nil {
+		now := time.Now().UTC()
+		session.RedirectedAt = &now
+		s.store.Update(session)
+	}
+	return session.SessionURI, prior, nil
 }
 
 // PollBySessionID proxies polling for the wrapped polling endpoint.

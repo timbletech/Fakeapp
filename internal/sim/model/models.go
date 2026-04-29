@@ -21,6 +21,7 @@ type Session struct {
 	CreatedAt     time.Time
 	ExpiresAt     time.Time
 	CompletedAt   *time.Time
+	RedirectedAt  *time.Time // set on first /v1/sim/redirect/{id} hit; used to refuse reuse
 }
 
 // StartRequest is the request body for POST /v1/auth/start.

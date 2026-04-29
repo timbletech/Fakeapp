@@ -18,10 +18,14 @@ type Config struct {
 	SekuraClientKey     string
 	SekuraClientSecret  string
 	SekuraRefreshToken  string
+	SekuraPollingKey    string
+	SekuraPollingSecret string
+	SekuraScopes        []string
 	SessionTTLSeconds   int
 	SessionMaxAttempts  int
 	PollingMaxRetries   int
 	PollingRetryDelayMs int
+	DevMode             bool
 }
 
 // Load reads configuration from a .env file (if present) and environment variables.
@@ -62,6 +66,14 @@ func Load() (*Config, error) {
 		missing = append(missing, "SEKURA_REFRESH_TOKEN")
 	}
 
+	// Polling creds are optional - Sekura may issue a separate Basic-auth pair
+	// for the polling_uri endpoint, or the same pair as the token endpoint.
+	// When unset, fall back to the client key/secret.
+	cfg.SekuraPollingKey = envOr("SEKURA_POLLING_KEY", cfg.SekuraClientKey)
+	cfg.SekuraPollingSecret = envOr("SEKURA_POLLING_SECRET", cfg.SekuraClientSecret)
+
+	cfg.SekuraScopes = parseScopes(envOr("SEKURA_SCOPES", "operator_lookup,device_match"))
+
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
 	}
@@ -88,6 +100,8 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid POLLING_RETRY_DELAY_MS: %w", err)
 	}
 
+	cfg.DevMode, _ = strconv.ParseBool(envOr("DEV_MODE", "false"))
+
 	return cfg, nil
 }
 
@@ -104,4 +118,15 @@ func envInt(key string, fallback int) (int, error) {
 		return fallback, nil
 	}
 	return strconv.Atoi(v)
+}
+
+func parseScopes(raw string) []string {
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if s := strings.TrimSpace(p); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }

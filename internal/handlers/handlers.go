@@ -480,6 +480,7 @@ func (api *API) startSIMOnlyAuth(req *models.StartAuthRequest) (*models.StartAut
 		Sim: &models.SimChallenge{
 			AuthSessionID:    simResp.AuthSessionID,
 			SessionURI:       simResp.SessionURI,
+			PollingURI:       simResp.PollingURI,
 			ExpiresInSeconds: simResp.ExpiresIn,
 			Instructions:     simResp.Instructions,
 		},
@@ -537,6 +538,7 @@ func (api *API) startHybridAuth(req *models.StartAuthRequest) (*models.StartAuth
 		Sim: &models.SimChallenge{
 			AuthSessionID:    simResp.AuthSessionID,
 			SessionURI:       simResp.SessionURI,
+			PollingURI:       simResp.PollingURI,
 			ExpiresInSeconds: simResp.ExpiresIn,
 			Instructions:     simResp.Instructions,
 		},

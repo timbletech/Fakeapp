@@ -195,6 +195,71 @@
             line-height: 1.55;
         }
 
+        /* QR display block (SIM panel) */
+        .qr-block {
+            margin-top: 16px;
+            padding: 18px;
+            background: var(--surface-alt);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+        .qr-block h4 {
+            margin: 0 0 6px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .qr-block .qr-sub {
+            color: var(--muted);
+            font-size: 0.8125rem;
+            margin: 0 0 14px;
+            line-height: 1.5;
+        }
+        .qr-canvas {
+            display: inline-block;
+            background: #fff;
+            padding: 10px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            line-height: 0;
+        }
+        .qr-canvas img {
+            display: block;
+            width: 240px;
+            height: 240px;
+            max-width: 100%;
+        }
+        .qr-link {
+            margin-top: 12px;
+            font-size: 0.8125rem;
+            word-break: break-all;
+            color: var(--muted);
+        }
+        .qr-link a {
+            color: var(--primary);
+            text-decoration: none;
+            font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.75rem;
+        }
+        .qr-link a:hover { text-decoration: underline; }
+        .qr-meta {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: var(--muted);
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .qr-meta::before {
+            content: "";
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 0 3px var(--success-light);
+        }
+
         /* Form */
         .form-grid {
             display: grid;
@@ -1039,6 +1104,13 @@
                         <div id="sim-status" class="status">
                             <div class="status-head"><span>SIM Output</span><span id="sim-badge" class="badge badge-idle">IDLE</span></div>
                             <div id="sim-output" class="result-card"><div class="rc-string-msg">Awaiting direct SIM session start.</div></div>
+                        </div>
+                        <div id="sim-qr-block" class="qr-block hidden">
+                            <h4>Scan with the user's device</h4>
+                            <p class="qr-sub">Open the camera app on a phone <strong>connected to cellular data (not WiFi)</strong> and point it at this QR. The phone will load the SIM verification link.</p>
+                            <div class="qr-canvas"><img id="sim-qr-img" alt="SIM verification QR code" /></div>
+                            <p class="qr-link"><a id="sim-qr-link" href="#" target="_blank" rel="noopener"></a></p>
+                            <span class="qr-meta" id="sim-qr-meta">Live - waiting for device</span>
                         </div>
                     </div>
                 </section>
@@ -1908,6 +1980,7 @@
             state.sim.sessionUri = null;
             state.sim.pollingUri = null;
             document.getElementById('btn-sim-complete').disabled = true;
+            document.getElementById('sim-qr-block').classList.add('hidden');
 
             setStatus('sim-status', 'sim-badge', 'sim-output', 'Starting direct SIM session...', 'PENDING');
             try {
@@ -1924,6 +1997,15 @@
                 state.sim.pollingUri = data.polling_uri;
                 document.getElementById('btn-sim-complete').disabled = !data.polling_uri;
                 setStatus('sim-status', 'sim-badge', 'sim-output', data, 'PENDING');
+
+                if (data.session_uri) {
+                    const qrImg = document.getElementById('sim-qr-img');
+                    const qrLink = document.getElementById('sim-qr-link');
+                    qrImg.src = '/v1/sim/qr.png?size=240&text=' + encodeURIComponent(data.session_uri);
+                    qrLink.href = data.session_uri;
+                    qrLink.textContent = data.session_uri;
+                    document.getElementById('sim-qr-block').classList.remove('hidden');
+                }
             } catch (err) {
                 setStatus('sim-status', 'sim-badge', 'sim-output', `Error: ${err.message}`, 'ERROR');
             }
@@ -1969,6 +2051,12 @@
                 setStatus('sim-status', 'sim-badge', 'sim-output', `Error: ${err.message}`, 'ERROR');
             }
         });
+
+        function escapeHTML(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+        }
 
         // ══════════════════════════════════════════════════════════════════════════
         // FAKEAPP — HYBRID
