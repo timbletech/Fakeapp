@@ -155,6 +155,11 @@ func main() {
 	mux.Handle("/v1/sim/complete", simmiddleware.APIKeyAuth(simCfg.TimbleAPIKey, http.HandlerFunc(simAuthHandler.Complete)))
 	// No auth required for redirect so device can seamlessly navigate to it
 	mux.Handle("/v1/sim/redirect/", http.HandlerFunc(simAuthHandler.Redirect))
+	// Alias used by the HTTPS welcome page's auto-advance: hit over plain
+	// HTTP on :8097 (bypasses the front proxy's HTTP->HTTPS 301) so the
+	// verify interstitial and the cellular request to Sekura stay cleartext
+	// for operator header-enrichment.
+	mux.Handle("/v1/sim/verify/", http.HandlerFunc(simAuthHandler.Redirect))
 	// Success/error page (kept for completeness; current flow goes to home instead).
 	mux.Handle("/v1/sim/result/", http.HandlerFunc(simAuthHandler.Result))
 	// PNG QR generator used by the demo UI to render a scannable image of

@@ -127,6 +127,17 @@ func (h *AuthHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	}
 	sessionID := pathParts[4]
 
+	// HTTPS welcome gate: first HTTPS hit (typical QR scan landing) shows a
+	// no-consumption welcome page. After 4 s the welcome JS navigates to the
+	// same URL with ?proceed=1, which skips this gate and runs the existing
+	// verify interstitial (which itself navigates the device cross-origin to
+	// Sekura over HTTP for operator enrichment). ?force=1 and ?probe=1 also
+	// bypass the gate for direct/debug callers.
+	if isHTTPS(r) && r.URL.Query().Get("proceed") == "" && r.URL.Query().Get("force") == "" && r.URL.Query().Get("probe") == "" {
+		serveWelcomePage(w, r, sessionID)
+		return
+	}
+
 	// Probe mode is a non-consuming peek for debugging.
 	if r.URL.Query().Get("probe") != "" {
 		sessURI, err := h.authService.GetUpstreamSessionURI(sessionID)
@@ -150,6 +161,14 @@ func (h *AuthHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Session not found or expired", http.StatusNotFound)
 		return
+	}
+
+	// Force the upstream Sekura URL to plain HTTP across every downstream
+	// path (interstitial nav AND raw 302). Operator header-enrichment only
+	// injects MSISDN on http:// requests, so an https:// URI here would
+	// silently break SIM verification.
+	if strings.HasPrefix(sessURI, "https://") {
+		sessURI = "http://" + strings.TrimPrefix(sessURI, "https://")
 	}
 
 	accept := r.Header.Get("Accept")
@@ -225,6 +244,81 @@ h1{font-size:20px;font-weight:600;margin:0 0 8px;color:#111827;letter-spacing:-.
 .dots span:nth-child(3){animation-delay:.4s}
 @keyframes dots{0%,80%,100%{opacity:.2}40%{opacity:1}}
 `
+
+// isHTTPS reports whether the inbound request was made over TLS, accounting
+// for TLS-terminating proxies that forward via HTTP and set X-Forwarded-Proto.
+func isHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		return true
+	}
+	return false
+}
+
+// serveWelcomePage is the HTTPS landing rendered on first QR scan. It does
+// not consume the session_uri. After 4 seconds a script does
+// window.location.href = nextURL, where nextURL is the HTTP /v1/sim/verify
+// alias on the app's direct port (8097). Going via :8097 bypasses the front
+// proxy's HTTP->HTTPS 301 redirect for this domain, which otherwise looped
+// the user back to the welcome page.
+func serveWelcomePage(w http.ResponseWriter, r *http.Request, sessionID string) {
+	host := r.Host
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		host = host[:i]
+	}
+	// Hard-coded to match SERVER_PORT in the systemd unit / .env. Update both
+	// if the listener moves.
+	nextURL := "http://" + host + ":8097/v1/sim/verify/" + sessionID
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+
+	safeID := html.EscapeString(sessionID)
+
+	fmt.Fprintf(w, `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f766e">
+<title>Welcome | Vishwas</title>
+<style>%s
+.count{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%%;background:#e6f4f3;color:#0f766e;font-size:28px;font-weight:700;margin:0 auto 18px;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="brand-bar"><span class="brand-mark"></span><span class="brand-text">Vishwas</span><span class="brand-sub">SIM Verification</span></header>
+<main class="card">
+<div class="count" id="count" aria-live="polite">4</div>
+<h1>Welcome</h1>
+<p class="lede">Moving to verification in <span id="countdown">4</span> seconds.</p>
+</main>
+<div class="foot"><span>Session</span><code>%s</code></div>
+</div>
+<script>
+(function(){
+  var next = %q;
+  var n = 4;
+  var bigEl = document.getElementById('count');
+  var inlineEl = document.getElementById('countdown');
+  var t = setInterval(function(){
+    n--;
+    if (bigEl) bigEl.textContent = n;
+    if (inlineEl) inlineEl.textContent = n;
+    if (n <= 0) {
+      clearInterval(t);
+      window.location.href = next;
+    }
+  }, 1000);
+})();
+</script>
+</body>
+</html>`, simBrandCSS, safeID, nextURL)
+}
 
 // serveAlreadyConsumed renders an HTML 410 page when a session_uri has been
 // reloaded after first use. Without this the browser would 302 into a stale
